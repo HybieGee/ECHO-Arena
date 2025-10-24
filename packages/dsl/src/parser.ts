@@ -23,19 +23,22 @@ export async function parsePromptToDSL(
 ): Promise<ParseResult> {
   // Sanitize input
   const sanitized = sanitizePrompt(prompt);
-  if (!sanitized.valid) {
-    return { success: false, error: sanitized.error };
+  if (!sanitized.valid || !sanitized.prompt) {
+    return { success: false, error: sanitized.error || 'Invalid prompt' };
   }
 
+  // Store validated prompt for TypeScript's type narrowing
+  const validatedPrompt: string = sanitized.prompt;
+
   // Try rule-based parsing first
-  const ruleBasedResult = ruleBasedParse(sanitized.prompt);
+  const ruleBasedResult = ruleBasedParse(validatedPrompt);
   if (ruleBasedResult.success && ruleBasedResult.dsl) {
     return ruleBasedResult;
   }
 
   // Fallback to LLM if available
   if (llmApiKey) {
-    return await llmParse(sanitized.prompt, llmApiKey);
+    return await llmParse(validatedPrompt, llmApiKey);
   }
 
   // If all else fails, return the rule-based attempt or error
