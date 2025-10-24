@@ -29,144 +29,222 @@ export default function Home() {
     : '...';
 
   return (
-    <div className="container-arena py-12">
-      {/* Hero Section */}
-      <div className="text-center mb-16">
-        <h1 className="text-6xl font-bold mb-6 neon-text animate-glow">
-          ECHO ARENA
-        </h1>
-        <p className="text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-          Build a bot in 500 chars. Trade 24h on real BSC data. Win BNB.
-        </p>
+    <div className="relative">
+      {/* Hero Section with animated background */}
+      <div className="relative overflow-hidden">
+        {/* Animated grid overlay */}
+        <div className="absolute inset-0 cyber-grid-overlay pointer-events-none opacity-30" />
 
-        <div className="flex justify-center gap-4">
-          <Link
-            href={isConnected ? '/spawn' : '#'}
-            className="btn-primary text-lg px-8 py-4"
-            onClick={(e) => {
-              if (!isConnected) {
-                e.preventDefault();
-                alert('Please connect your wallet first');
-              }
-            }}
-          >
-            {isConnected ? 'Spawn Bot' : 'Connect Wallet to Start'}
-          </Link>
-          <Link href="/arena" className="btn-secondary text-lg px-8 py-4">
-            View Arena
-          </Link>
+        <div className="container-arena py-20 md:py-32 text-center relative z-10">
+          {/* Main Title with animation */}
+          <div className="mb-6 animate-slide-up">
+            <h1 className="hero-title">
+              ECHO ARENA
+            </h1>
+            <div className="h-1 w-32 mx-auto bg-gradient-to-r from-transparent via-echo-magenta to-transparent" />
+          </div>
+
+          {/* Tagline */}
+          <p className="text-lg md:text-xl text-echo-muted mb-3 font-orbitron tracking-wide uppercase animate-slide-up opacity-80">
+            Echoes of Code. Clones of Thought.
+          </p>
+
+          {/* Subtitle */}
+          <p className="hero-subtitle mb-12 max-w-3xl mx-auto animate-slide-up">
+            Build a trading bot in 500 chars • Battle 24h on real BSC data • Win BNB
+          </p>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 animate-slide-up">
+            <Link
+              href={isConnected ? '/spawn' : '#'}
+              className="btn-primary text-lg px-10 py-4 relative overflow-hidden group"
+              onClick={(e) => {
+                if (!isConnected) {
+                  e.preventDefault();
+                  alert('Please connect your wallet first');
+                }
+              }}
+            >
+              <span className="relative z-10">
+                {isConnected ? '⚡ SPAWN BOT' : '🔌 CONNECT TO START'}
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-echo-cyan to-echo-magenta opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </Link>
+            <Link href="/arena" className="btn-secondary text-lg px-10 py-4">
+              VIEW ARENA →
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* Stats Tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-        <StatTile
-          label="Bots Entered"
-          value={match?.match?.botsEntered || 0}
-          color="purple"
-        />
-        <StatTile
-          label="Total Burns"
-          value={`${(match?.match?.totalBurnsBNB || 0).toFixed(4)} BNB`}
-          color="cyan"
-        />
-        <StatTile
-          label="Prize Cap"
-          value={`${config?.prizes?.capBNB || 5} BNB`}
-          color="pink"
-        />
-        <StatTile
-          label="Time to Reset"
-          value={timeRemaining}
-          color="blue"
-        />
+      {/* Stats Grid with unified glow */}
+      <div className="container-arena -mt-8 mb-20 relative z-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatBanner
+            label="BOTS ENTERED"
+            value={match?.match?.botsEntered || 0}
+            icon="🤖"
+            color="magenta"
+          />
+          <StatBanner
+            label="TOTAL BURNS"
+            value={`${(match?.match?.totalBurnsBNB || 0).toFixed(4)} BNB`}
+            icon="🔥"
+            color="cyan"
+          />
+          <StatBanner
+            label="PRIZE CAP"
+            value={`${config?.prizes?.capBNB || 5} BNB`}
+            icon="🏆"
+            color="gold"
+          />
+          <StatBanner
+            label="TIME TO RESET"
+            value={timeRemaining}
+            icon="⏱️"
+            color="magenta"
+          />
+        </div>
       </div>
 
-      {/* How it Works */}
-      <div className="card-arena mb-16">
-        <h2 className="text-3xl font-bold mb-6 text-center">How It Works</h2>
+      {/* How it Works Section */}
+      <div className="container-arena mb-20">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl md:text-5xl font-orbitron font-bold mb-4 tracking-wider uppercase">
+            <span className="neon-text">HOW IT WORKS</span>
+          </h2>
+          <div className="h-1 w-24 mx-auto bg-gradient-to-r from-transparent via-echo-cyan to-transparent" />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Step
-            number="1"
-            title="Write Strategy"
+          <StepCard
+            number={1}
+            title="WRITE STRATEGY"
             description="Describe your trading strategy in ≤500 characters. Use simple commands like 'buy momentum tokens with TP 20% and SL 15%'"
+            icon="✍️"
           />
-          <Step
-            number="2"
-            title="Burn $ECHO"
+          <StepCard
+            number={2}
+            title="BURN $ECHO"
             description="During Week 1, spawn 1 free bot. After that, burn 0.01 BNB worth of $ECHO tokens to enter each daily battle."
+            icon="🔥"
           />
-          <Step
-            number="3"
-            title="Win BNB"
+          <StepCard
+            number={3}
+            title="WIN BNB"
             description="Your bot trades on real BSC prices for 24h. Winner receives 1 BNB × min(% gain, 500%), capped at 5 BNB."
+            icon="💰"
           />
         </div>
       </div>
 
-      {/* Features */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <FeatureCard
-          title="Real Market Data"
-          description="Simulations use live BSC price feeds from Dexscreener with real fees, slippage, and latency."
-        />
-        <FeatureCard
-          title="Fair & Deterministic"
-          description="All bots execute in deterministic order. No arbitrary randomness. Pure skill."
-        />
-        <FeatureCard
-          title="60 Orders Max"
-          description="Each bot can execute up to 60 orders per day with a 5-second cooldown."
-        />
-        <FeatureCard
-          title="Transparent Results"
-          description="Every match result is hashed (SHA-256) and stored on-chain for verification."
-        />
+      {/* Features Grid */}
+      <div className="container-arena mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FeatureCard
+            title="REAL MARKET DATA"
+            description="Simulations use live BSC price feeds from Dexscreener with real fees, slippage, and latency."
+            icon="📊"
+          />
+          <FeatureCard
+            title="FAIR & DETERMINISTIC"
+            description="All bots execute in deterministic order. No arbitrary randomness. Pure skill."
+            icon="⚖️"
+          />
+          <FeatureCard
+            title="60 ORDERS MAX"
+            description="Each bot can execute up to 60 orders per day with a 5-second cooldown."
+            icon="⚡"
+          />
+          <FeatureCard
+            title="TRANSPARENT RESULTS"
+            description="Every match result is hashed (SHA-256) and stored on-chain for verification."
+            icon="🔒"
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function StatTile({
+function StatBanner({
   label,
   value,
+  icon,
   color,
 }: {
   label: string;
   value: string | number;
-  color: 'purple' | 'cyan' | 'pink' | 'blue';
+  icon: string;
+  color: 'magenta' | 'cyan' | 'gold';
 }) {
   const colorClasses = {
-    purple: 'border-neon-purple text-neon-purple',
-    cyan: 'border-neon-cyan text-neon-cyan',
-    pink: 'border-neon-pink text-neon-pink',
-    blue: 'border-neon-blue text-neon-blue',
+    magenta: 'border-echo-magenta/30 hover:border-echo-magenta/60 shadow-neon-magenta/20',
+    cyan: 'border-echo-cyan/30 hover:border-echo-cyan/60 shadow-neon-cyan/20',
+    gold: 'border-echo-gold/30 hover:border-echo-gold/60 shadow-neon-gold/20',
+  };
+
+  const textColors = {
+    magenta: 'text-echo-magenta',
+    cyan: 'text-echo-cyan',
+    gold: 'text-echo-gold',
   };
 
   return (
-    <div className={`card-arena border-2 ${colorClasses[color]}`}>
-      <div className="text-sm text-gray-400 mb-2">{label}</div>
-      <div className="text-3xl font-bold">{value}</div>
+    <div className={`stat-banner ${colorClasses[color]}`}>
+      <div className="flex items-center gap-3">
+        <div className="text-4xl">{icon}</div>
+        <div className="flex-1">
+          <div className="text-xs font-orbitron tracking-wider text-echo-muted uppercase mb-1">
+            {label}
+          </div>
+          <div className={`text-2xl md:text-3xl font-orbitron font-bold ${textColors[color]} group-hover:scale-105 transition-transform`}>
+            {value}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function Step({
+function StepCard({
   number,
   title,
   description,
+  icon,
 }: {
-  number: string;
+  number: number;
   title: string;
   description: string;
+  icon: string;
 }) {
   return (
-    <div className="text-center">
-      <div className="w-12 h-12 rounded-full bg-gradient-to-r from-neon-purple to-neon-blue flex items-center justify-center text-2xl font-bold mx-auto mb-4">
-        {number}
+    <div className="card-arena text-center relative overflow-hidden group">
+      {/* Number orb with glow */}
+      <div className="relative mb-6">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-echo-magenta to-echo-cyan flex items-center justify-center text-3xl font-orbitron font-black mx-auto shadow-neon-magenta-lg group-hover:scale-110 transition-transform">
+          {number}
+        </div>
+        {/* Decorative glow ring */}
+        <div className="absolute inset-0 w-20 h-20 rounded-full border-2 border-echo-magenta/20 mx-auto animate-ping opacity-75" />
       </div>
-      <h3 className="text-xl font-bold mb-2">{title}</h3>
-      <p className="text-gray-400">{description}</p>
+
+      {/* Icon */}
+      <div className="text-5xl mb-4">{icon}</div>
+
+      {/* Title */}
+      <h3 className="text-xl font-orbitron font-bold mb-3 tracking-wider text-echo-cyan">
+        {title}
+      </h3>
+
+      {/* Description */}
+      <p className="text-echo-muted text-sm leading-relaxed">
+        {description}
+      </p>
+
+      {/* Top glow border */}
+      <div className="glow-border-top absolute top-0 left-0 right-0" />
     </div>
   );
 }
@@ -174,14 +252,27 @@ function Step({
 function FeatureCard({
   title,
   description,
+  icon,
 }: {
   title: string;
   description: string;
+  icon: string;
 }) {
   return (
-    <div className="card-arena">
-      <h3 className="text-xl font-bold mb-2 text-neon-cyan">{title}</h3>
-      <p className="text-gray-400">{description}</p>
+    <div className="card-arena group">
+      <div className="flex items-start gap-4">
+        <div className="text-4xl flex-shrink-0 group-hover:scale-110 transition-transform">
+          {icon}
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-orbitron font-bold mb-2 tracking-wide text-echo-cyan group-hover:text-echo-magenta transition-colors">
+            {title}
+          </h3>
+          <p className="text-echo-muted text-sm leading-relaxed">
+            {description}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
