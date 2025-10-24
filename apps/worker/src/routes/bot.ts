@@ -12,6 +12,39 @@ import { rateLimitMiddleware } from '../lib/rate-limit';
 export const botRoutes = new Hono<{ Bindings: Env }>();
 
 /**
+ * POST /api/bot/preview
+ * Preview a bot strategy (parse DSL without creating)
+ */
+botRoutes.post('/preview', async (c) => {
+  try {
+    const { prompt } = await c.req.json();
+
+    if (!prompt) {
+      return c.json({ error: 'Missing prompt' }, 400);
+    }
+
+    // Parse prompt to DSL (with Claude API fallback)
+    const parseResult = await parsePromptToDSL(prompt, c.env.ANTHROPIC_API_KEY);
+
+    if (!parseResult.success || !parseResult.dsl) {
+      return c.json(
+        { error: parseResult.error || 'Failed to parse strategy' },
+        400
+      );
+    }
+
+    return c.json({
+      success: true,
+      dsl: parseResult.dsl,
+      usedLLM: parseResult.usedLLM,
+    });
+  } catch (error) {
+    console.error('Preview error:', error);
+    return c.json({ error: 'Failed to preview strategy' }, 500);
+  }
+});
+
+/**
  * POST /api/bot
  * Create a new bot
  */
@@ -133,6 +166,32 @@ botRoutes.post('/', async (c) => {
   } catch (error) {
     console.error('Bot creation error:', error);
     return c.json({ error: 'Failed to create bot' }, 500);
+  }
+});
+
+/**
+ * GET /api/bot/check-eligibility/:address
+ * Check if address is eligible for free spawn
+ */
+botRoutes.get('/check-eligibility/:address', async (c) => {
+  try {
+    const address = c.req.param('address');
+
+    const freeCheck = await checkFreeEligibility(
+      c.env.DB,
+      address,
+      c.env.FREE_START,
+      c.env.FREE_END
+    );
+
+    return c.json({
+      eligible: freeCheck.eligible,
+      reason: freeCheck.reason,
+      isFreeWeek: freeCheck.eligible || freeCheck.reason === 'Free spawn already used',
+    });
+  } catch (error) {
+    console.error('Error checking eligibility:', error);
+    return c.json({ error: 'Failed to check eligibility' }, 500);
   }
 });
 

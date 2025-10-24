@@ -50,6 +50,14 @@ export const api = {
   checkBurn: (address: string) => fetchAPI(`/burn/check/${address}`),
 
   // Bot
+  previewBot: (prompt: string) =>
+    fetchAPI('/bot/preview', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    }),
+
+  checkEligibility: (address: string) => fetchAPI(`/bot/check-eligibility/${address}`),
+
   createBot: (prompt: string, address: string) =>
     fetchAPI('/bot', {
       method: 'POST',

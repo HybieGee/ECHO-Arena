@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { parsePromptToDSL, dslToChips } from '@echo-arena/dsl';
+import { dslToChips } from '@echo-arena/dsl';
 import { useAuthContext } from '@/contexts/auth-context';
 import Link from 'next/link';
 
@@ -33,8 +33,18 @@ export default function SpawnPage() {
     enabled: !!address,
   });
 
+  const { data: eligibilityCheck } = useQuery({
+    queryKey: ['eligibility-check', address],
+    queryFn: () => api.checkEligibility(address!),
+    enabled: !!address,
+  });
+
   const createBotMutation = useMutation({
     mutationFn: () => api.createBot(prompt, address!),
+  });
+
+  const previewMutation = useMutation({
+    mutationFn: () => api.previewBot(prompt),
   });
 
   const verifyBurnMutation = useMutation({
@@ -66,17 +76,22 @@ export default function SpawnPage() {
   };
 
   const handlePreview = async () => {
-    const result = await parsePromptToDSL(prompt);
-    if (result.success && result.dsl) {
-      setPreviewDSL(result.dsl);
-    } else {
-      alert(`Parse error: ${result.error}`);
+    try {
+      const result = await previewMutation.mutateAsync();
+      if (result.success && result.dsl) {
+        setPreviewDSL(result.dsl);
+      } else {
+        alert(`Parse error: ${result.error || 'Failed to parse'}`);
+      }
+    } catch (error: any) {
+      alert(`Preview error: ${error.message}`);
     }
   };
 
   const handleCreate = async () => {
-    if (burnCheck?.hasVerifiedBurn) {
-      // Has burn, create directly
+    // Check free eligibility first
+    if (eligibilityCheck?.eligible || burnCheck?.hasVerifiedBurn) {
+      // Free spawn or has burn, create directly
       try {
         const result = await createBotMutation.mutateAsync();
         if (result.success) {
@@ -126,7 +141,15 @@ export default function SpawnPage() {
           <div className="space-y-6">
             {/* Eligibility Status */}
             <div className="card-arena">
-              {burnCheck?.hasVerifiedBurn ? (
+              {eligibilityCheck?.eligible ? (
+                <div className="flex items-center gap-3 text-neon-green">
+                  <span className="text-2xl">✓</span>
+                  <div>
+                    <div className="font-orbitron font-bold tracking-wide">FREE SPAWN AVAILABLE</div>
+                    <div className="text-sm text-echo-muted">Week 1 - No burn required!</div>
+                  </div>
+                </div>
+              ) : burnCheck?.hasVerifiedBurn ? (
                 <div className="flex items-center gap-3 text-neon-green">
                   <span className="text-2xl">✓</span>
                   <div>
@@ -140,7 +163,10 @@ export default function SpawnPage() {
                   <div>
                     <div className="font-orbitron font-bold tracking-wide">ENTRY REQUIRES BURN</div>
                     <div className="text-sm text-echo-muted">
-                      {burnPrice?.requiredEchoAmount || '...'} $ECHO ({burnPrice?.requiredBurnBNB || 0.01} BNB equivalent)
+                      {eligibilityCheck?.reason === 'Free spawn already used'
+                        ? 'You already used your free spawn this week'
+                        : `${burnPrice?.requiredEchoAmount || '...'} $ECHO (${burnPrice?.requiredBurnBNB || 0.01} BNB equivalent)`
+                      }
                     </div>
                   </div>
                 </div>
@@ -199,7 +225,11 @@ export default function SpawnPage() {
                 className="btn-primary flex-1"
                 disabled={!previewDSL || createBotMutation.isPending}
               >
-                {createBotMutation.isPending ? 'CREATING...' : '🔥 BURN & ENTER'}
+                {createBotMutation.isPending
+                  ? 'CREATING...'
+                  : eligibilityCheck?.eligible || burnCheck?.hasVerifiedBurn
+                    ? '⚡ SPAWN BOT'
+                    : '🔥 BURN & ENTER'}
               </button>
             </div>
           </div>
