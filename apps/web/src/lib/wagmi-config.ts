@@ -50,4 +50,5 @@ export const config: Config = createConfig({
     [bsc.id]: http('https://bsc-dataseed.binance.org'),
     [bscTestnet.id]: http('https://data-seed-prebsc-1-s1.binance.org:8545'),
   },
+  ssr: true,
 });
