@@ -192,12 +192,12 @@ function StatBanner({
   return (
     <div className={`stat-banner group ${colorClasses[color]}`}>
       <div className="flex items-center gap-3">
-        <div className="w-20 h-20 relative flex-shrink-0">
+        <div className="w-28 h-28 relative flex-shrink-0">
           <Image
             src={iconPath}
             alt={label}
-            width={80}
-            height={80}
+            width={112}
+            height={112}
             className="object-contain"
           />
         </div>
@@ -262,12 +262,12 @@ function FeatureCard({
   return (
     <div className="card-arena group">
       <div className="flex items-start gap-4">
-        <div className="w-20 h-20 relative flex-shrink-0 group-hover:scale-110 transition-transform">
+        <div className="w-28 h-28 relative flex-shrink-0 group-hover:scale-110 transition-transform">
           <Image
             src={iconPath}
             alt={title}
-            width={80}
-            height={80}
+            width={112}
+            height={112}
             className="object-contain"
           />
         </div>
