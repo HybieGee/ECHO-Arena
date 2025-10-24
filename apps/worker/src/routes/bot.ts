@@ -79,46 +79,54 @@ botRoutes.post('/', async (c) => {
       return c.json({ error: 'No active match available' }, 400, rateLimit.headers);
     }
 
-    // Check if user already has a bot in this match
-    const existingBot = await c.env.DB.prepare(
-      'SELECT id FROM bots WHERE match_id = ? AND owner_address = ? LIMIT 1'
-    )
-      .bind(match.id, address.toLowerCase())
-      .first();
+    // Skip restrictions in development mode for testing
+    const isDevelopment = c.env.ENVIRONMENT === 'development';
 
-    if (existingBot) {
-      return c.json(
-        { error: 'You already have a bot in this match' },
-        400,
-        rateLimit.headers
-      );
+    // Check if user already has a bot in this match
+    if (!isDevelopment) {
+      const existingBot = await c.env.DB.prepare(
+        'SELECT id FROM bots WHERE match_id = ? AND owner_address = ? LIMIT 1'
+      )
+        .bind(match.id, address.toLowerCase())
+        .first();
+
+      if (existingBot) {
+        return c.json(
+          { error: 'You already have a bot in this match' },
+          400,
+          rateLimit.headers
+        );
+      }
     }
 
     // Check eligibility
-    const freeCheck = await checkFreeEligibility(
-      c.env.DB,
-      address,
-      c.env.FREE_START,
-      c.env.FREE_END
-    );
 
-    if (!freeCheck.eligible) {
-      // Check for verified burn
-      const burn = await c.env.DB.prepare(
-        'SELECT id FROM burns WHERE owner_address = ? AND verified = 1 AND ts >= ?'
-      )
-        .bind(address.toLowerCase(), match.start_ts)
-        .first();
+    if (!isDevelopment) {
+      const freeCheck = await checkFreeEligibility(
+        c.env.DB,
+        address,
+        c.env.FREE_START,
+        c.env.FREE_END
+      );
 
-      if (!burn) {
-        return c.json(
-          {
-            error: 'Entry requires burn. No verified burn found.',
-            requiresBurn: true,
-          },
-          402,
-          rateLimit.headers
-        );
+      if (!freeCheck.eligible) {
+        // Check for verified burn
+        const burn = await c.env.DB.prepare(
+          'SELECT id FROM burns WHERE owner_address = ? AND verified = 1 AND ts >= ?'
+        )
+          .bind(address.toLowerCase(), match.start_ts)
+          .first();
+
+        if (!burn) {
+          return c.json(
+            {
+              error: 'Entry requires burn. No verified burn found.',
+              requiresBurn: true,
+            },
+            402,
+            rateLimit.headers
+          );
+        }
       }
     }
 
@@ -176,6 +184,17 @@ botRoutes.post('/', async (c) => {
 botRoutes.get('/check-eligibility/:address', async (c) => {
   try {
     const address = c.req.param('address');
+
+    // In development mode, always allow free spawns for testing
+    const isDevelopment = c.env.ENVIRONMENT === 'development';
+
+    if (isDevelopment) {
+      return c.json({
+        eligible: true,
+        reason: 'Development mode - unlimited free spawns',
+        isFreeWeek: true,
+      });
+    }
 
     const freeCheck = await checkFreeEligibility(
       c.env.DB,
