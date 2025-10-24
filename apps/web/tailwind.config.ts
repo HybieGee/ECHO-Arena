@@ -43,6 +43,7 @@ const config: Config = {
         'neon-cyan': '0 0 20px rgba(0, 229, 255, 0.6)',
         'neon-cyan-lg': '0 0 40px rgba(0, 229, 255, 0.8)',
         'neon-gold': '0 0 20px rgba(255, 217, 61, 0.6)',
+        'neon-green': '0 0 20px rgba(0, 255, 136, 0.6)',
         'glow-ring': '0 0 10px rgba(224, 0, 255, 0.4)',
         'glow-ring-hover': '0 0 20px rgba(0, 229, 255, 0.6)',
       },

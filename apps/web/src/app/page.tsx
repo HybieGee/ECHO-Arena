@@ -192,7 +192,7 @@ function StatBanner({
   };
 
   return (
-    <div className={`stat-banner ${colorClasses[color]}`}>
+    <div className={`stat-banner group ${colorClasses[color]}`}>
       <div className="flex items-center gap-3">
         <div className="text-4xl">{icon}</div>
         <div className="flex-1">

@@ -5,7 +5,18 @@
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: ECHO Arena - AI Trading Game MVP\n\nComplete implementation of BSC-native AI trading game including:\n\nBackend (Cloudflare Workers):\n- Hono API with D1, KV, Durable Objects\n- EIP-191 authentication\n- Burn verification with on-chain checks\n- Match coordinator with 24h simulation\n- Dexscreener API integration\n- Rate limiting and security\n\nFrontend (Next.js 14):\n- Wallet integration (wagmi + viem)\n- Home, Spawn, Arena, Winners, Admin pages\n- Dark neon arena theme\n- Real-time leaderboard updates\n\nSimulation Engine:\n- Deterministic rule engine\n- 0.25% fees, 2s latency, 10bps slippage\n- DSL parser (rule-based + LLM fallback)\n- PnL tracking and prize calculation\n\nComplete monorepo with packages:\n- @echo-arena/dsl: Strategy DSL schema\n- @echo-arena/sim: Simulation engine\n\nDeployment ready for Cloudflare Pages + Workers\n\n🤖 Generated with Claude Code\nhttps://claude.com/claude-code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(export CLOUDFLARE_API_TOKEN=\"0vJ4rcbSmiJ6JTpuGWCX5-HED97z56GvLpSA_c7K\")",
+      "Bash(export CLOUDFLARE_ACCOUNT_ID=\"7d721b5c1782592e2cd183ecd6793641\")",
+      "Bash(wrangler d1 create:*)",
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(wrangler deploy:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

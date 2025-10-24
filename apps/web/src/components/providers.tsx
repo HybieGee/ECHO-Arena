@@ -1,6 +1,6 @@
 /**
  * App providers wrapper
- * Includes Wagmi and TanStack Query
+ * Includes Wagmi, TanStack Query, and Auth
  */
 
 'use client';
@@ -8,6 +8,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { config } from '@/lib/wagmi-config';
+import { AuthProvider } from '@/contexts/auth-context';
 import { useState } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -23,7 +24,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

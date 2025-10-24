@@ -26,7 +26,7 @@
   }
 
   .stat-banner {
-    @apply bg-gradient-to-br from-arena-surface to-arena-hover border border-echo-magenta/30 rounded-xl p-6 min-h-[90px] hover:shadow-glow-ring-hover hover:border-echo-cyan/50 transition-all duration-300 group;
+    @apply bg-gradient-to-br from-arena-surface to-arena-hover border border-echo-magenta/30 rounded-xl p-6 min-h-[90px] hover:shadow-glow-ring-hover hover:border-echo-cyan/50 transition-all duration-300;
   }
 
   .btn-primary {

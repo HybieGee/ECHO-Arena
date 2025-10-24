@@ -1,7 +1,7 @@
 name = "echo-arena-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
-node_compat = true
+compatibility_flags = ["nodejs_compat"]
 
 # Environment variables
 [vars]
@@ -30,24 +30,10 @@ id = "d29119c1e6b94f80999f2e228cd6517c"
 [[durable_objects.bindings]]
 name = "MATCH_COORDINATOR"
 class_name = "MatchCoordinator"
-script_name = "echo-arena-worker"
 
 [[migrations]]
 tag = "v1"
 new_classes = ["MatchCoordinator"]
-
-# Durable Object class definition
-[durable_objects]
-bindings = [
-  { name = "MATCH_COORDINATOR", class_name = "MatchCoordinator" }
-]
-
-# Build configuration
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "service-worker"
 
 # Environment-specific configurations
 [env.production]
