@@ -21,5 +21,6 @@ export interface Env {
   FREE_START: string;
   FREE_END: string;
   ALLOWLIST_ADMINS: string;
+  ANTHROPIC_API_KEY: string;
   ENVIRONMENT: string;
 }

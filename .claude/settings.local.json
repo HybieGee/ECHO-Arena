@@ -17,7 +17,10 @@
       "Bash(npm install:*)",
       "Bash(wrangler deploy:*)",
       "Bash(npm run build:*)",
-      "WebFetch(domain:codepen.io)"
+      "WebFetch(domain:codepen.io)",
+      "Read(//c/Users/User/Desktop/Claude/Echo Images/**)",
+      "Bash(npx wrangler:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

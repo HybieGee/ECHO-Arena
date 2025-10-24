@@ -158,28 +158,112 @@ function ruleBasedParse(prompt: string): ParseResult {
 }
 
 /**
- * LLM-based parser (fallback when rule-based parsing fails)
- * This is a stub - in production, you'd call an LLM API here
+ * LLM-based parser using Claude API
  */
 async function llmParse(prompt: string, apiKey: string): Promise<ParseResult> {
-  // TODO: Implement actual LLM call when API key is provided
-  // For now, return a mock implementation
-
-  console.warn('LLM parsing not yet implemented. Using default strategy.');
-
   try {
-    const validated = StrategyDSLSchema.parse(DEFAULT_STRATEGY);
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        messages: [
+          {
+            role: 'user',
+            content: `You are a trading strategy parser. Convert this user prompt into a JSON trading strategy DSL.
+
+User prompt: "${prompt}"
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "entry": {
+    "signal": "momentum" | "volumeSpike" | "newLaunch" | "socialBuzz",
+    "maxPositions": 1-5,
+    "allocationPerPositionBNB": 0.5-10
+  },
+  "risk": {
+    "takeProfitPct": 5-500,
+    "stopLossPct": 5-50
+  },
+  "exits": {
+    "trailingStopPct": 0-30,
+    "timeLimitMin": 0-1440
+  },
+  "universe": {
+    "minLiquidityBNB": 10-1000,
+    "ageMinutesMax": 1-10080
+  }
+}
+
+Extract the strategy parameters from the user's intent. If not specified, use sensible defaults:
+- signal: "momentum" (most common)
+- maxPositions: 3
+- allocationPerPositionBNB: 2
+- takeProfitPct: 20
+- stopLossPct: 15
+- trailingStopPct: 0
+- timeLimitMin: 0 (no limit)
+- minLiquidityBNB: 50
+- ageMinutesMax: 10080 (1 week)
+
+Return ONLY the JSON object, no explanation.`,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Claude API error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as {
+      content?: Array<{ text?: string }>;
+    };
+    const content = data.content?.[0]?.text;
+
+    if (!content) {
+      throw new Error('No response from Claude');
+    }
+
+    // Extract JSON from response (may be wrapped in markdown code blocks)
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.replace(/```json\n?/, '').replace(/\n?```$/, '');
+    } else if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```\n?/, '').replace(/\n?```$/, '');
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    const validated = StrategyDSLSchema.parse(parsed);
+
     return {
       success: true,
       dsl: validated,
-      usedLLM: true
+      usedLLM: true,
     };
   } catch (error) {
-    return {
-      success: false,
-      error: 'LLM parsing failed',
-      usedLLM: true
-    };
+    console.error('LLM parsing error:', error);
+
+    // Fallback to default strategy on error
+    try {
+      const validated = StrategyDSLSchema.parse(DEFAULT_STRATEGY);
+      return {
+        success: true,
+        dsl: validated,
+        usedLLM: true,
+      };
+    } catch {
+      return {
+        success: false,
+        error: 'LLM parsing failed',
+        usedLLM: true,
+      };
+    }
   }
 }
 

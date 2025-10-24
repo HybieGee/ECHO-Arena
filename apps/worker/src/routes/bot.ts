@@ -89,8 +89,8 @@ botRoutes.post('/', async (c) => {
       }
     }
 
-    // Parse prompt to DSL
-    const parseResult = await parsePromptToDSL(prompt);
+    // Parse prompt to DSL (with Claude API fallback)
+    const parseResult = await parsePromptToDSL(prompt, c.env.ANTHROPIC_API_KEY);
 
     if (!parseResult.success || !parseResult.dsl) {
       return c.json(

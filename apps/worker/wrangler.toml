@@ -6,6 +6,11 @@ compatibility_flags = ["nodejs_compat"]
 # Environment variables
 [vars]
 ENVIRONMENT = "development"
+BSC_RPC_URL = "https://bsc-dataseed.binance.org"
+ECHO_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000"
+FREE_START = "2025-10-24T00:00:00Z"
+FREE_END = "2025-10-31T23:59:59Z"
+ALLOWLIST_ADMINS = ""
 
 # D1 Database binding
 [[d1_databases]]
