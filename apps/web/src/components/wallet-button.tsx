@@ -44,7 +44,7 @@ export function WalletButton() {
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-slide-up">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-slide-up">
           <div className="bg-arena-surface border-2 border-echo-magenta/50 rounded-2xl p-8 max-w-md w-full shadow-neon-magenta-lg relative overflow-hidden">
             {/* Animated background grid */}
             <div className="absolute inset-0 cyber-grid-overlay opacity-10 pointer-events-none" />
