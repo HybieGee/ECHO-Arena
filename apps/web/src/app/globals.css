@@ -4,7 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-arena-bg text-gray-100 antialiased;
+    @apply bg-arena-bg text-echo-text antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-orbitron tracking-wider uppercase;
   }
 
   * {
@@ -18,26 +22,65 @@
   }
 
   .card-arena {
-    @apply bg-arena-surface border border-arena-border rounded-lg p-6 shadow-lg;
+    @apply bg-gradient-to-br from-arena-surface to-arena-hover border border-echo-magenta/20 rounded-xl p-6 shadow-glow-ring hover:shadow-glow-ring-hover transition-all duration-300;
+  }
+
+  .stat-banner {
+    @apply bg-gradient-to-br from-arena-surface to-arena-hover border border-echo-magenta/30 rounded-xl p-6 min-h-[90px] hover:shadow-glow-ring-hover hover:border-echo-cyan/50 transition-all duration-300 group;
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-neon-purple to-neon-blue text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-neon-purple hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+    @apply bg-gradient-to-r from-echo-magenta to-echo-cyan text-white font-orbitron font-bold py-3 px-8 rounded-lg transition-all duration-300 hover:shadow-neon-magenta-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 tracking-wider uppercase;
   }
 
   .btn-secondary {
-    @apply bg-arena-surface border border-neon-cyan text-neon-cyan font-semibold py-2 px-4 rounded-lg transition-all duration-200 hover:bg-neon-cyan hover:text-arena-bg hover:shadow-neon-cyan;
+    @apply bg-transparent border-2 border-echo-cyan text-echo-cyan font-orbitron font-semibold py-2.5 px-6 rounded-lg transition-all duration-300 hover:bg-echo-cyan hover:text-arena-bg hover:shadow-neon-cyan active:scale-95 tracking-wide uppercase;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-echo-muted hover:text-echo-cyan font-medium py-2 px-4 rounded-lg transition-all duration-200;
   }
 
   .input-arena {
-    @apply bg-arena-surface border border-arena-border rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-purple focus:border-transparent;
+    @apply bg-arena-surface/50 border border-echo-magenta/30 rounded-lg px-4 py-3 text-echo-text placeholder-echo-muted focus:outline-none focus:ring-2 focus:ring-echo-magenta focus:border-transparent backdrop-blur-sm transition-all;
   }
 
   .neon-text {
-    @apply text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-neon-pink to-neon-cyan;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-echo-magenta via-echo-cyan to-echo-magenta bg-[length:200%_100%] animate-gradient-shift;
   }
 
   .glow-border {
-    @apply border border-neon-purple shadow-neon-purple;
+    @apply border border-echo-magenta shadow-neon-magenta;
+  }
+
+  .glow-border-top {
+    @apply border-t border-echo-magenta shadow-[0_-2px_10px_rgba(224,0,255,0.4)];
+  }
+
+  /* Hero section gradients */
+  .hero-title {
+    @apply text-5xl md:text-7xl font-orbitron font-black tracking-wider uppercase neon-text mb-4;
+  }
+
+  .hero-subtitle {
+    @apply text-xl md:text-2xl text-echo-muted font-light tracking-wide;
+  }
+
+  /* Animated elements */
+  .pulse-glow {
+    @apply animate-glow-pulse;
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-arena-surface/30 backdrop-blur-md border border-white/10;
+  }
+
+  /* Cyber grid overlay */
+  .cyber-grid-overlay {
+    background-image:
+      linear-gradient(rgba(224, 0, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(224, 0, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
   }
 }
