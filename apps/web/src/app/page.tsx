@@ -6,6 +6,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
@@ -84,25 +85,25 @@ export default function Home() {
           <StatBanner
             label="BOTS ENTERED"
             value={match?.match?.botsEntered || 0}
-            icon="🤖"
+            iconPath="/icons/BotsEntered.png"
             color="magenta"
           />
           <StatBanner
             label="TOTAL BURNS"
             value={`${(match?.match?.totalBurnsBNB || 0).toFixed(4)} BNB`}
-            icon="🔥"
+            iconPath="/icons/Burns.png"
             color="cyan"
           />
           <StatBanner
             label="PRIZE CAP"
             value={`${config?.prizes?.capBNB || 5} BNB`}
-            icon="🏆"
+            iconPath="/icons/PrizeCap.png"
             color="gold"
           />
           <StatBanner
             label="TIME TO RESET"
             value={timeRemaining}
-            icon="⏱️"
+            iconPath="/icons/TimeToReset.png"
             color="magenta"
           />
         </div>
@@ -142,22 +143,22 @@ export default function Home() {
           <FeatureCard
             title="REAL MARKET DATA"
             description="Simulations use live BSC price feeds from Dexscreener with real fees, slippage, and latency."
-            icon="📊"
+            iconPath="/icons/MarketData.png"
           />
           <FeatureCard
             title="FAIR & DETERMINISTIC"
             description="All bots execute in deterministic order. No arbitrary randomness. Pure skill."
-            icon="⚖️"
+            iconPath="/icons/FairDetermin.png"
           />
           <FeatureCard
             title="60 ORDERS MAX"
             description="Each bot can execute up to 60 orders per day with a 5-second cooldown."
-            icon="⚡"
+            iconPath="/icons/60orders.png"
           />
           <FeatureCard
             title="TRANSPARENT RESULTS"
             description="Every match result is hashed (SHA-256) and stored on-chain for verification."
-            icon="🔒"
+            iconPath="/icons/transparent.png"
           />
         </div>
       </div>
@@ -168,12 +169,12 @@ export default function Home() {
 function StatBanner({
   label,
   value,
-  icon,
+  iconPath,
   color,
 }: {
   label: string;
   value: string | number;
-  icon: string;
+  iconPath: string;
   color: 'magenta' | 'cyan' | 'gold';
 }) {
   const colorClasses = {
@@ -191,7 +192,15 @@ function StatBanner({
   return (
     <div className={`stat-banner group ${colorClasses[color]}`}>
       <div className="flex items-center gap-3">
-        <div className="text-4xl">{icon}</div>
+        <div className="w-12 h-12 relative flex-shrink-0">
+          <Image
+            src={iconPath}
+            alt={label}
+            width={48}
+            height={48}
+            className="object-contain"
+          />
+        </div>
         <div className="flex-1">
           <div className="text-xs font-orbitron tracking-wider text-echo-muted uppercase mb-1">
             {label}
@@ -244,17 +253,23 @@ function StepCard({
 function FeatureCard({
   title,
   description,
-  icon,
+  iconPath,
 }: {
   title: string;
   description: string;
-  icon: string;
+  iconPath: string;
 }) {
   return (
     <div className="card-arena group">
       <div className="flex items-start gap-4">
-        <div className="text-4xl flex-shrink-0 group-hover:scale-110 transition-transform">
-          {icon}
+        <div className="w-12 h-12 relative flex-shrink-0 group-hover:scale-110 transition-transform">
+          <Image
+            src={iconPath}
+            alt={title}
+            width={48}
+            height={48}
+            className="object-contain"
+          />
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-orbitron font-bold mb-2 tracking-wide text-echo-cyan group-hover:text-echo-magenta transition-colors">
