@@ -30,21 +30,19 @@ export async function parsePromptToDSL(
   // Store validated prompt for TypeScript's type narrowing
   const validatedPrompt: string = sanitized.prompt;
 
-  // Try rule-based parsing first
+  // If LLM API key is available, use Claude first for best results
+  if (llmApiKey) {
+    return await llmParse(validatedPrompt, llmApiKey);
+  }
+
+  // Fallback to rule-based parsing if no API key
   const ruleBasedResult = ruleBasedParse(validatedPrompt);
   if (ruleBasedResult.success && ruleBasedResult.dsl) {
     return ruleBasedResult;
   }
 
-  // Fallback to LLM if available
-  if (llmApiKey) {
-    return await llmParse(validatedPrompt, llmApiKey);
-  }
-
-  // If all else fails, return the rule-based attempt or error
-  return ruleBasedResult.success
-    ? ruleBasedResult
-    : { success: false, error: 'Unable to parse prompt. Try being more specific about entry signals, risk levels, or position sizing.' };
+  // If all else fails, return error
+  return { success: false, error: 'Unable to parse prompt. Try being more specific about entry signals, risk levels, or position sizing.' };
 }
 
 /**
@@ -181,35 +179,47 @@ User prompt: "${prompt}"
 
 Respond ONLY with valid JSON matching this schema:
 {
+  "universe": {
+    "ageMinutesMax": 1-10080,
+    "minLiquidityBNB": 10-1000,
+    "minHolders": 50
+  },
   "entry": {
     "signal": "momentum" | "volumeSpike" | "newLaunch" | "socialBuzz",
+    "threshold": 2.0,
     "maxPositions": 1-5,
     "allocationPerPositionBNB": 0.5-10
   },
   "risk": {
     "takeProfitPct": 5-500,
-    "stopLossPct": 5-50
+    "stopLossPct": 5-50,
+    "cooldownSec": 5
   },
   "exits": {
-    "trailingStopPct": 0-30,
-    "timeLimitMin": 0-1440
+    "timeLimitMin": 0-1440,
+    "trailingStopPct": 0-30
   },
-  "universe": {
-    "minLiquidityBNB": 10-1000,
-    "ageMinutesMax": 1-10080
+  "blacklist": {
+    "taxPctMax": 0-100,
+    "honeypot": true,
+    "ownerRenouncedRequired": false,
+    "lpLockedRequired": true
   }
 }
 
-Extract the strategy parameters from the user's intent. If not specified, use sensible defaults:
-- signal: "momentum" (most common)
-- maxPositions: 3
-- allocationPerPositionBNB: 2
-- takeProfitPct: 20
-- stopLossPct: 15
-- trailingStopPct: 0
-- timeLimitMin: 0 (no limit)
-- minLiquidityBNB: 50
-- ageMinutesMax: 10080 (1 week)
+Extract the strategy parameters from the user's intent:
+- signal: "momentum" for trending, "volumeSpike" for volume, "newLaunch" for new tokens, "socialBuzz" for social
+- maxPositions: how many tokens to hold at once (1-5)
+- allocationPerPositionBNB: how much BNB per token (0.5-10)
+- takeProfitPct: profit target percentage (5-500%)
+- stopLossPct: stop loss percentage (5-50%)
+- trailingStopPct: trailing stop (0 = none, or 1-30%)
+- timeLimitMin: max hold time in minutes (0 = no limit)
+- minLiquidityBNB: minimum pool liquidity
+- ageMinutesMax: max token age in minutes
+
+Defaults if not specified:
+{"universe":{"ageMinutesMax":1440,"minLiquidityBNB":50,"minHolders":50},"entry":{"signal":"momentum","threshold":2,"maxPositions":3,"allocationPerPositionBNB":2},"risk":{"takeProfitPct":20,"stopLossPct":15,"cooldownSec":5},"exits":{"timeLimitMin":0,"trailingStopPct":0},"blacklist":{"taxPctMax":10,"honeypot":true,"ownerRenouncedRequired":false,"lpLockedRequired":true}}
 
 Return ONLY the JSON object, no explanation.`,
           },
@@ -247,23 +257,15 @@ Return ONLY the JSON object, no explanation.`,
       usedLLM: true,
     };
   } catch (error) {
-    console.error('LLM parsing error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('LLM parsing error:', errorMessage, error);
 
-    // Fallback to default strategy on error
-    try {
-      const validated = StrategyDSLSchema.parse(DEFAULT_STRATEGY);
-      return {
-        success: true,
-        dsl: validated,
-        usedLLM: true,
-      };
-    } catch {
-      return {
-        success: false,
-        error: 'LLM parsing failed',
-        usedLLM: true,
-      };
-    }
+    // Return error for debugging
+    return {
+      success: false,
+      error: `Claude API error: ${errorMessage}`,
+      usedLLM: true,
+    };
   }
 }
 

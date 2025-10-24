@@ -24,21 +24,21 @@ export const UniverseSchema = z.object({
 export const EntrySchema = z.object({
   signal: SignalTypeSchema,
   threshold: z.number().positive().default(2.0), // e.g., z-score or multiplier
-  maxPositions: z.number().int().positive().max(10).default(3),
-  allocationPerPositionBNB: z.number().positive().max(0.5).default(0.2), // max 50% per position
+  maxPositions: z.number().int().positive().max(5).default(3),
+  allocationPerPositionBNB: z.number().positive().max(10).default(2), // max 10 BNB per position
 });
 
 // Risk management rules
 export const RiskSchema = z.object({
-  takeProfitPct: z.number().positive().max(1000).default(20),
-  stopLossPct: z.number().positive().max(100).default(15),
+  takeProfitPct: z.number().positive().min(5).max(500).default(20),
+  stopLossPct: z.number().positive().min(5).max(50).default(15),
   cooldownSec: z.number().int().nonnegative().default(5),
 });
 
 // Exit conditions
 export const ExitsSchema = z.object({
-  timeLimitMin: z.number().int().positive().max(1440).default(240), // max 24h
-  trailingStopPct: z.number().positive().max(50).default(10),
+  timeLimitMin: z.number().int().nonnegative().max(1440).default(0), // 0 = no limit, max 24h
+  trailingStopPct: z.number().nonnegative().max(30).default(0), // 0 = no trailing stop
 });
 
 // Token blacklist criteria
@@ -55,7 +55,12 @@ export const StrategyDSLSchema = z.object({
   entry: EntrySchema,
   risk: RiskSchema,
   exits: ExitsSchema,
-  blacklist: BlacklistSchema,
+  blacklist: BlacklistSchema.optional().default({
+    taxPctMax: 10,
+    honeypot: true,
+    ownerRenouncedRequired: false,
+    lpLockedRequired: true,
+  }),
 });
 
 // TypeScript types derived from schemas
@@ -80,7 +85,7 @@ export const DEFAULT_STRATEGY: StrategyDSL = {
     signal: 'momentum',
     threshold: 2.0,
     maxPositions: 3,
-    allocationPerPositionBNB: 0.2,
+    allocationPerPositionBNB: 2,
   },
   risk: {
     takeProfitPct: 20,
@@ -88,8 +93,8 @@ export const DEFAULT_STRATEGY: StrategyDSL = {
     cooldownSec: 5,
   },
   exits: {
-    timeLimitMin: 240,
-    trailingStopPct: 10,
+    timeLimitMin: 0,
+    trailingStopPct: 0,
   },
   blacklist: {
     taxPctMax: 10,
