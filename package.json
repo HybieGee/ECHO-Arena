@@ -1,0 +1,26 @@
+{
+  "name": "echo-arena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ECHO Arena - AI Trading Game on BSC",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:worker": "npm run dev --workspace=apps/worker",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "deploy:web": "npm run deploy --workspace=apps/web",
+    "deploy:worker": "npm run deploy --workspace=apps/worker"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
