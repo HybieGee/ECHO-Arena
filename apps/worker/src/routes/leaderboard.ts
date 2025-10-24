@@ -16,47 +16,61 @@ leaderboardRoutes.get('/', async (c) => {
   try {
     // Get current match
     const match = await c.env.DB.prepare(
-      'SELECT * FROM matches WHERE status = ? ORDER BY start_ts DESC LIMIT 1'
+      'SELECT * FROM matches WHERE status IN (?, ?) ORDER BY start_ts DESC LIMIT 1'
     )
-      .bind('running')
+      .bind('running', 'pending')
       .first();
 
     if (!match) {
-      return c.json({ error: 'No running match' }, 404);
+      return c.json({ error: 'No active match' }, 404);
     }
 
-    // Get Durable Object stub
-    const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
-    const stub = c.env.MATCH_COORDINATOR.get(id);
+    // Get all bots in this match
+    const bots = await c.env.DB.prepare(
+      'SELECT * FROM bots WHERE match_id = ? ORDER BY created_at ASC'
+    )
+      .bind(match.id)
+      .all();
 
-    // Fetch leaderboard from DO
-    const response = await stub.fetch('https://match/leaderboard');
-    const leaderboard = await response.json();
+    // Try to get live data from Durable Object
+    let liveData: any[] = [];
 
-    // Enrich with bot data
-    if (Array.isArray(leaderboard)) {
-      const enriched = await Promise.all(
-        leaderboard.map(async (entry: any) => {
-          const bot = await c.env.DB.prepare(
-            'SELECT prompt_raw FROM bots WHERE id = ?'
-          )
-            .bind(entry.bot_id)
-            .first();
+    if (match.status === 'running') {
+      try {
+        const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
+        const stub = c.env.MATCH_COORDINATOR.get(id);
+        const response = await stub.fetch('https://match/leaderboard');
+        const data = await response.json();
 
-          return {
-            ...entry,
-            botName: bot?.prompt_raw.substring(0, 16) || 'Unknown',
-          };
-        })
-      );
-
-      return c.json({
-        matchId: match.id,
-        leaderboard: enriched,
-      });
+        if (Array.isArray(data)) {
+          liveData = data;
+        }
+      } catch (error) {
+        console.error('Failed to fetch from DO:', error);
+        // Continue with static bot list
+      }
     }
 
-    return c.json({ error: 'Failed to fetch leaderboard' }, 500);
+    // Build leaderboard
+    const leaderboard = (bots.results || []).map((bot: any) => {
+      const liveEntry = liveData.find((entry: any) => entry.bot_id === bot.id);
+
+      return {
+        botId: bot.id,
+        ownerAddress: bot.owner_address,
+        botName: bot.prompt_raw.substring(0, 50) || 'Unknown',
+        balance: liveEntry?.balance || 1.0,
+        pnl: liveEntry?.pnl || 0,
+        orders: liveEntry?.orders || 0,
+        status: liveEntry ? 'trading' : 'waiting',
+      };
+    });
+
+    return c.json({
+      matchId: match.id,
+      matchStatus: match.status,
+      leaderboard: leaderboard.sort((a: any, b: any) => b.balance - a.balance),
+    });
   } catch (error) {
     console.error('Leaderboard error:', error);
     return c.json({ error: 'Failed to fetch leaderboard' }, 500);
