@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "cd ../../packages/dsl && npm install && npm run build && cd ../sim && npm install && npm run build",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
