@@ -11,20 +11,20 @@ ENVIRONMENT = "development"
 [[d1_databases]]
 binding = "DB"
 database_name = "echo-arena-db"
-database_id = "placeholder-will-be-set-on-first-deploy"
+database_id = "3054a7d7-e2c1-4a40-be4f-0eacd23a8ef0"
 
 # KV Namespaces
 [[kv_namespaces]]
 binding = "CACHE"
-id = "placeholder-cache-kv-id"
+id = "e43d9e9674f24ac0afdddf7219c5b57c"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "placeholder-rate-limit-kv-id"
+id = "c1ad15e94b3a4566bef6f9ca9a8d03ce"
 
 [[kv_namespaces]]
 binding = "RESULTS"
-id = "placeholder-results-kv-id"
+id = "d29119c1e6b94f80999f2e228cd6517c"
 
 # Durable Objects
 [[durable_objects.bindings]]
@@ -55,17 +55,17 @@ vars = { ENVIRONMENT = "production" }
 
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "echo-arena-db-prod"
-database_id = "production-database-id"
+database_name = "echo-arena-db"
+database_id = "3054a7d7-e2c1-4a40-be4f-0eacd23a8ef0"
 
 [[env.production.kv_namespaces]]
 binding = "CACHE"
-id = "production-cache-kv-id"
+id = "e43d9e9674f24ac0afdddf7219c5b57c"
 
 [[env.production.kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "production-rate-limit-kv-id"
+id = "c1ad15e94b3a4566bef6f9ca9a8d03ce"
 
 [[env.production.kv_namespaces]]
 binding = "RESULTS"
-id = "production-results-kv-id"
+id = "d29119c1e6b94f80999f2e228cd6517c"
