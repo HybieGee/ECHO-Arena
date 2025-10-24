@@ -1,0 +1,68 @@
+/**
+ * Starfield Background Animation
+ * Twinkling stars and moving clouds effect
+ */
+
+'use client';
+
+export function StarfieldBackground() {
+  return (
+    <>
+      <div className="stars" />
+      <div className="twinkling" />
+      <div className="clouds" />
+
+      <style jsx>{`
+        .stars,
+        .twinkling,
+        .clouds {
+          position: fixed;
+          display: block;
+          top: 0;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+        }
+
+        .stars {
+          z-index: 0;
+          background: #000 url('https://i.imgur.com/YKY28eT.png') repeat top center;
+        }
+
+        .twinkling {
+          z-index: 1;
+          background: transparent url('https://i.imgur.com/XYMF4ca.png') repeat top center;
+          animation: move-twink-back 200s linear infinite;
+        }
+
+        .clouds {
+          z-index: 2;
+          background: transparent url('https://i.imgur.com/mHbScrQ.png') repeat top center;
+          animation: move-clouds-back 200s linear infinite;
+          opacity: 0.3;
+        }
+
+        @keyframes move-twink-back {
+          from {
+            background-position: 0 0;
+          }
+          to {
+            background-position: -10000px 5000px;
+          }
+        }
+
+        @keyframes move-clouds-back {
+          from {
+            background-position: 0 0;
+          }
+          to {
+            background-position: 10000px 0;
+          }
+        }
+      `}</style>
+    </>
+  );
+}
