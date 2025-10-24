@@ -36,10 +36,16 @@ interface MatchState {
 
 export class MatchCoordinator extends DurableObject {
   private state: MatchState | null = null;
-  private tickInterval: number | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+  }
+
+  /**
+   * Load state from storage on initialization
+   */
+  async initialize() {
+    this.state = await this.ctx.storage.get('matchState');
   }
 
   /**
@@ -68,25 +74,22 @@ export class MatchCoordinator extends DurableObject {
     // Store initial state
     await this.ctx.storage.put('matchState', this.state);
 
-    // Start simulation loop
-    this.startSimulation();
+    // Schedule first alarm to start simulation loop (run immediately)
+    await this.ctx.storage.setAlarm(Date.now() + 100);
 
     return { success: true, message: 'Match started' };
   }
 
   /**
-   * Start the simulation loop
-   * Runs every 10 seconds to evaluate strategies and execute trades
+   * Alarm handler - runs simulation tick every 10 seconds
    */
-  private startSimulation() {
-    if (this.tickInterval) {
-      clearInterval(this.tickInterval);
-    }
+  async alarm() {
+    await this.simulationTick();
 
-    // Run simulation tick every 10 seconds
-    this.tickInterval = setInterval(async () => {
-      await this.simulationTick();
-    }, 10000) as unknown as number;
+    // Schedule next alarm if match is still running
+    if (this.state && this.state.isRunning) {
+      await this.ctx.storage.setAlarm(Date.now() + 10000); // 10 seconds
+    }
   }
 
   /**
@@ -99,6 +102,11 @@ export class MatchCoordinator extends DurableObject {
    * 3. Persist snapshots
    */
   private async simulationTick() {
+    // Ensure state is loaded
+    if (!this.state) {
+      this.state = await this.ctx.storage.get('matchState');
+    }
+
     if (!this.state || !this.state.isRunning) return;
 
     const currentTime = Date.now();
@@ -236,10 +244,8 @@ export class MatchCoordinator extends DurableObject {
 
     this.state.isRunning = false;
 
-    if (this.tickInterval) {
-      clearInterval(this.tickInterval);
-      this.tickInterval = null;
-    }
+    // Cancel any pending alarms
+    await this.ctx.storage.deleteAlarm();
 
     // Calculate final standings
     const universe = await this.fetchUniverse();
@@ -278,6 +284,11 @@ export class MatchCoordinator extends DurableObject {
    * Get current leaderboard
    */
   async getLeaderboard() {
+    // Ensure state is loaded
+    if (!this.state) {
+      this.state = await this.ctx.storage.get('matchState');
+    }
+
     if (!this.state) {
       return { error: 'No active match' };
     }

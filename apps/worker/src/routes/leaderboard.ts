@@ -40,10 +40,16 @@ leaderboardRoutes.get('/', async (c) => {
         const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
         const stub = c.env.MATCH_COORDINATOR.get(id);
         const response = await stub.fetch('https://match/leaderboard');
+
+        console.log('DO response status:', response.status);
         const data = await response.json();
+        console.log('DO leaderboard data:', JSON.stringify(data));
 
         if (Array.isArray(data)) {
           liveData = data;
+          console.log('Using live data from DO, entries:', liveData.length);
+        } else if (data.error) {
+          console.error('DO returned error:', data.error);
         }
       } catch (error) {
         console.error('Failed to fetch from DO:', error);
@@ -60,8 +66,8 @@ leaderboardRoutes.get('/', async (c) => {
         ownerAddress: bot.owner_address,
         botName: bot.prompt_raw.substring(0, 50) || 'Unknown',
         balance: liveEntry?.balance || 1.0,
-        pnl: liveEntry?.pnl || 0,
-        orders: liveEntry?.orders || 0,
+        pnl: liveEntry?.gain_pct || 0,
+        orders: liveEntry?.trades || 0,
         status: liveEntry ? 'trading' : 'waiting',
       };
     });
