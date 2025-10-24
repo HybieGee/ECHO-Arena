@@ -67,7 +67,7 @@ export default function Home() {
               }}
             >
               <span className="relative z-10">
-                {isConnected ? '⚡ SPAWN BOT' : '🔌 CONNECT TO START'}
+                {isConnected ? 'SPAWN BOT' : 'CONNECT TO START'}
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-echo-cyan to-echo-magenta opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </Link>
@@ -122,19 +122,16 @@ export default function Home() {
             number={1}
             title="WRITE STRATEGY"
             description="Describe your trading strategy in ≤500 characters. Use simple commands like 'buy momentum tokens with TP 20% and SL 15%'"
-            icon="✍️"
           />
           <StepCard
             number={2}
             title="BURN $ECHO"
             description="During Week 1, spawn 1 free bot. After that, burn 0.01 BNB worth of $ECHO tokens to enter each daily battle."
-            icon="🔥"
           />
           <StepCard
             number={3}
             title="WIN BNB"
             description="Your bot trades on real BSC prices for 24h. Winner receives 1 BNB × min(% gain, 500%), capped at 5 BNB."
-            icon="💰"
           />
         </div>
       </div>
@@ -212,12 +209,10 @@ function StepCard({
   number,
   title,
   description,
-  icon,
 }: {
   number: number;
   title: string;
   description: string;
-  icon: string;
 }) {
   return (
     <div className="card-arena text-center relative overflow-hidden group">
@@ -229,9 +224,6 @@ function StepCard({
         {/* Decorative glow ring */}
         <div className="absolute inset-0 w-20 h-20 rounded-full border-2 border-echo-magenta/20 mx-auto animate-ping opacity-75" />
       </div>
-
-      {/* Icon */}
-      <div className="text-5xl mb-4">{icon}</div>
 
       {/* Title */}
       <h3 className="text-xl font-orbitron font-bold mb-3 tracking-wider text-echo-cyan">

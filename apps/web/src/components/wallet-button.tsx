@@ -119,7 +119,7 @@ export function WalletButton() {
         onClick={() => setShowModal(true)}
         className="px-6 py-3 bg-gradient-to-r from-echo-magenta to-echo-cyan hover:shadow-neon-magenta-lg font-orbitron font-bold text-white rounded-lg transition-all duration-300 hover:scale-105 active:scale-95 tracking-wider uppercase"
       >
-        ⚡ CONNECT
+        CONNECT
       </button>
 
       {mounted && showModal && createPortal(modalContent, document.body)}
