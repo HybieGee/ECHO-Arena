@@ -20,7 +20,8 @@
       "WebFetch(domain:codepen.io)",
       "Read(//c/Users/User/Desktop/Claude/Echo Images/**)",
       "Bash(npx wrangler:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

@@ -83,14 +83,19 @@ botRoutes.post('/', async (c) => {
     const isDevelopment = c.env.ENVIRONMENT === 'development';
 
     // Check if user already has a bot in this match
-    if (!isDevelopment) {
-      const existingBot = await c.env.DB.prepare(
-        'SELECT id FROM bots WHERE match_id = ? AND owner_address = ? LIMIT 1'
-      )
-        .bind(match.id, address.toLowerCase())
-        .first();
+    const existingBot = await c.env.DB.prepare(
+      'SELECT id FROM bots WHERE match_id = ? AND owner_address = ? LIMIT 1'
+    )
+      .bind(match.id, address.toLowerCase())
+      .first();
 
-      if (existingBot) {
+    if (existingBot) {
+      if (isDevelopment) {
+        // In development mode, delete existing bot to allow testing
+        await c.env.DB.prepare('DELETE FROM bots WHERE id = ?')
+          .bind(existingBot.id)
+          .run();
+      } else {
         return c.json(
           { error: 'You already have a bot in this match' },
           400,
@@ -141,15 +146,63 @@ botRoutes.post('/', async (c) => {
       );
     }
 
+    // Generate bot name and description using Claude
+    let botName = 'Trading Bot';
+    let botDescription = prompt.substring(0, 100);
+
+    if (c.env.ANTHROPIC_API_KEY) {
+      try {
+        const nameResponse = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': c.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 150,
+            messages: [{
+              role: 'user',
+              content: `Given this trading strategy: "${prompt}"
+
+Generate:
+1. A short, catchy bot name (2-4 words, no special characters except spaces and hyphens)
+2. A brief description (max 100 characters)
+
+Respond in this exact format:
+NAME: [bot name]
+DESC: [description]`
+            }]
+          }),
+        });
+
+        if (nameResponse.ok) {
+          const data = await nameResponse.json() as { content?: Array<{ text?: string }> };
+          const text = data.content?.[0]?.text || '';
+          const nameMatch = text.match(/NAME:\s*(.+)/);
+          const descMatch = text.match(/DESC:\s*(.+)/);
+
+          if (nameMatch) botName = nameMatch[1].trim().substring(0, 50);
+          if (descMatch) botDescription = descMatch[1].trim().substring(0, 100);
+        }
+      } catch (error) {
+        console.error('Failed to generate bot name/description:', error);
+        // Use defaults if generation fails
+      }
+    }
+
     // Insert bot
     const botResult = await c.env.DB.prepare(
-      'INSERT INTO bots (match_id, owner_address, prompt_raw, prompt_dsl, created_at) VALUES (?, ?, ?, ?, ?) RETURNING *'
+      'INSERT INTO bots (match_id, owner_address, prompt_raw, prompt_dsl, bot_name, bot_description, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
     )
       .bind(
         match.id,
         address.toLowerCase(),
         prompt,
         JSON.stringify(parseResult.dsl),
+        botName,
+        botDescription,
         Math.floor(Date.now() / 1000)
       )
       .first();
@@ -164,6 +217,8 @@ botRoutes.post('/', async (c) => {
         bot: {
           id: botResult.id,
           matchId: botResult.match_id,
+          name: botResult.bot_name,
+          description: botResult.bot_description,
           prompt: botResult.prompt_raw,
           dsl: JSON.parse(botResult.prompt_dsl),
         },
@@ -173,7 +228,8 @@ botRoutes.post('/', async (c) => {
     );
   } catch (error) {
     console.error('Bot creation error:', error);
-    return c.json({ error: 'Failed to create bot' }, 500);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create bot';
+    return c.json({ error: errorMessage }, 500);
   }
 });
 

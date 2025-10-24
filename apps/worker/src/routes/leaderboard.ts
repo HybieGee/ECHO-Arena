@@ -27,7 +27,7 @@ leaderboardRoutes.get('/', async (c) => {
 
     // Get all bots in this match
     const bots = await c.env.DB.prepare(
-      'SELECT * FROM bots WHERE match_id = ? ORDER BY created_at ASC'
+      'SELECT id, owner_address, bot_name, bot_description, prompt_raw FROM bots WHERE match_id = ? ORDER BY created_at ASC'
     )
       .bind(match.id)
       .all();
@@ -64,7 +64,8 @@ leaderboardRoutes.get('/', async (c) => {
       return {
         botId: bot.id,
         ownerAddress: bot.owner_address,
-        botName: bot.prompt_raw.substring(0, 50) || 'Unknown',
+        botName: bot.bot_name || bot.prompt_raw?.substring(0, 50) || 'Unknown',
+        botDescription: bot.bot_description,
         balance: liveEntry?.balance || 1.0,
         pnl: liveEntry?.gain_pct || 0,
         orders: liveEntry?.trades || 0,

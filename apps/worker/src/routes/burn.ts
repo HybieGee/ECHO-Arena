@@ -141,9 +141,9 @@ burnRoutes.get('/check/:address', async (c) => {
 
     // Get current match
     const match = await c.env.DB.prepare(
-      'SELECT id FROM matches WHERE status = ? ORDER BY start_ts DESC LIMIT 1'
+      'SELECT id, start_ts FROM matches WHERE status IN (?, ?) ORDER BY start_ts DESC LIMIT 1'
     )
-      .bind('running')
+      .bind('running', 'pending')
       .first();
 
     if (!match) {

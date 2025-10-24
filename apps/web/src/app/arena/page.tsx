@@ -50,29 +50,29 @@ export default function ArenaPage() {
             <tbody>
               {leaderboard.map((entry: any, index: number) => (
                 <tr
-                  key={entry.bot_id}
+                  key={entry.botId}
                   className="border-b border-arena-border hover:bg-arena-hover cursor-pointer transition-colors"
-                  onClick={() => setSelectedBotId(entry.bot_id.toString())}
+                  onClick={() => setSelectedBotId(entry.botId.toString())}
                 >
                   <td className="py-3 px-4">{index + 1}</td>
                   <td className="py-3 px-4 font-mono text-neon-cyan">
-                    {entry.botName}
+                    {entry.botName || 'Unknown Bot'}
                   </td>
                   <td className="py-3 px-4 font-mono text-sm">
-                    {entry.owner_address.slice(0, 6)}...{entry.owner_address.slice(-4)}
+                    {entry.ownerAddress?.slice(0, 6)}...{entry.ownerAddress?.slice(-4)}
                   </td>
                   <td className="py-3 px-4 text-right font-semibold">
-                    {entry.balance.toFixed(4)} BNB
+                    {entry.balance?.toFixed(4)} BNB
                   </td>
                   <td
                     className={`py-3 px-4 text-right font-semibold ${
-                      entry.gain_pct >= 0 ? 'text-neon-green' : 'text-neon-red'
+                      entry.pnl >= 0 ? 'text-neon-green' : 'text-neon-red'
                     }`}
                   >
-                    {entry.gain_pct >= 0 ? '+' : ''}
-                    {entry.gain_pct.toFixed(2)}%
+                    {entry.pnl >= 0 ? '+' : ''}
+                    {entry.pnl?.toFixed(2)}%
                   </td>
-                  <td className="py-3 px-4 text-right">{entry.trades}</td>
+                  <td className="py-3 px-4 text-right">{entry.orders || 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -114,7 +114,7 @@ export default function ArenaPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {botDetail.orders.slice(0, 10).map((order: any) => (
+                    {(botDetail.orders || []).slice(0, 10).map((order: any) => (
                       <tr key={order.id} className="border-b border-arena-border">
                         <td className="py-2">
                           {new Date(order.ts).toLocaleTimeString()}
