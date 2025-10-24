@@ -4,7 +4,7 @@
 
 import { createConfig, http, type Config } from 'wagmi';
 import { bsc, bscTestnet } from 'wagmi/chains';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { metaMask, walletConnect, coinbaseWallet, injected } from 'wagmi/connectors';
 
 // WalletConnect project ID (replace with your own)
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id';
@@ -12,9 +12,22 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-proj
 export const config: Config = createConfig({
   chains: [bsc, bscTestnet],
   connectors: [
-    // Generic injected connector - works with MetaMask, Trust, Binance Wallet, etc.
+    // MetaMask - explicit connector for MetaMask extension
+    metaMask({
+      dappMetadata: {
+        name: 'ECHO Arena',
+      },
+    }),
+    // Generic injected for Trust Wallet, Binance Wallet, etc.
     injected({
       shimDisconnect: true,
+      target() {
+        return {
+          id: 'injected',
+          name: 'Other Browser Wallets',
+          provider: typeof window !== 'undefined' ? window.ethereum : undefined,
+        };
+      },
     }),
     // WalletConnect for mobile wallets
     walletConnect({

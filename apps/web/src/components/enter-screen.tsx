@@ -280,7 +280,7 @@ export function EnterScreen({ onEnter }: EnterScreenProps) {
         }
 
         .centerHover span {
-          color: #E000FF;
+          color: #FFFFFF;
           font-size: 18px;
           position: relative;
           transition: all 500ms;
@@ -293,7 +293,7 @@ export function EnterScreen({ onEnter }: EnterScreenProps) {
           width: 16px;
           margin-right: 12px;
           margin-bottom: 4px;
-          background-color: #E000FF;
+          background-color: #FFFFFF;
           transition: all 500ms;
         }
 
@@ -304,7 +304,7 @@ export function EnterScreen({ onEnter }: EnterScreenProps) {
           width: 16px;
           margin-left: 12px;
           margin-bottom: 4px;
-          background-color: #E000FF;
+          background-color: #FFFFFF;
           transition: all 500ms;
         }
 

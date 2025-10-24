@@ -67,15 +67,34 @@ export function WalletButton() {
 
           <div className="space-y-3">
             {filteredConnectors.map((connector) => {
-              const walletName = connector.name.includes('Injected')
-                ? 'Browser Wallet'
-                : connector.name;
+              let walletName = connector.name;
+              let walletSubtext = '';
+              let walletIcon = '💰';
 
-              const walletSubtext = connector.name.includes('Injected')
-                ? 'MetaMask, Trust, Binance Wallet'
-                : connector.name === 'WalletConnect'
-                ? 'Mobile wallet via QR code'
-                : 'Coinbase Wallet';
+              // Handle MetaMask specifically
+              if (connector.id === 'metaMask' || connector.name.includes('MetaMask')) {
+                walletName = 'MetaMask';
+                walletSubtext = 'Popular browser extension wallet';
+                walletIcon = '🦊';
+              }
+              // Handle other injected wallets
+              else if (connector.name.includes('Injected') || connector.name === 'Other Browser Wallets') {
+                walletName = 'Other Browser Wallets';
+                walletSubtext = 'Trust Wallet, Binance Wallet, etc.';
+                walletIcon = '🔗';
+              }
+              // WalletConnect
+              else if (connector.name === 'WalletConnect') {
+                walletName = 'WalletConnect';
+                walletSubtext = 'Mobile wallet via QR code';
+                walletIcon = '📱';
+              }
+              // Coinbase Wallet
+              else if (connector.name.includes('Coinbase')) {
+                walletName = 'Coinbase Wallet';
+                walletSubtext = 'Coinbase Wallet extension';
+                walletIcon = '💰';
+              }
 
               return (
                 <button
@@ -86,8 +105,7 @@ export function WalletButton() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-gradient-to-br from-echo-magenta to-echo-cyan rounded-lg flex items-center justify-center text-3xl shadow-neon-magenta group-hover:scale-110 transition-transform">
-                      {connector.name.includes('Injected') ? '🦊' :
-                       connector.name === 'WalletConnect' ? '📱' : '💰'}
+                      {walletIcon}
                     </div>
                     <div className="flex-1">
                       <div className="font-orbitron font-bold text-echo-text group-hover:text-echo-cyan transition-colors tracking-wide">
