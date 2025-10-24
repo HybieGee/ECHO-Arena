@@ -2,14 +2,14 @@
  * Wagmi configuration for BSC + Binance Wallet
  */
 
-import { createConfig, http } from 'wagmi';
+import { createConfig, http, type Config } from 'wagmi';
 import { bsc, bscTestnet } from 'wagmi/chains';
 import { injected, walletConnect } from 'wagmi/connectors';
 
 // WalletConnect project ID (replace with your own)
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id';
 
-export const config = createConfig({
+export const config: Config = createConfig({
   chains: [bsc, bscTestnet],
   connectors: [
     injected({
