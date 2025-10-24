@@ -10,9 +10,11 @@ import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const { isConnected } = useAccount();
+  const [clientTimeRemaining, setClientTimeRemaining] = useState<number | null>(null);
 
   const { data: match } = useQuery({
     queryKey: ['current-match'],
@@ -25,8 +27,29 @@ export default function Home() {
     queryFn: api.getConfig,
   });
 
-  const timeRemaining = match?.match?.timeRemaining
-    ? formatTimeRemaining(match.match.timeRemaining)
+  // Initialize and update countdown timer
+  useEffect(() => {
+    if (match?.match?.timeRemaining) {
+      setClientTimeRemaining(match.match.timeRemaining);
+    }
+  }, [match?.match?.timeRemaining]);
+
+  // Client-side countdown - update every second
+  useEffect(() => {
+    if (clientTimeRemaining === null || clientTimeRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      setClientTimeRemaining((prev) => {
+        if (prev === null || prev <= 1000) return 0;
+        return prev - 1000;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [clientTimeRemaining]);
+
+  const timeRemaining = clientTimeRemaining !== null
+    ? formatTimeRemaining(clientTimeRemaining)
     : '...';
 
   return (

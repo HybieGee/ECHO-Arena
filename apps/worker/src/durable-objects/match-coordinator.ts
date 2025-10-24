@@ -172,39 +172,70 @@ export class MatchCoordinator extends DurableObject {
 
   /**
    * Fetch token universe from Dexscreener
-   * Mock implementation - returns sample tokens
+   * Mock implementation - returns sample tokens with varying prices
    */
   private async fetchUniverse(): Promise<Token[]> {
     // TODO: Implement actual Dexscreener API integration
-    // For now, return mock tokens for testing
+    // For now, return mock tokens with simulated price movement
+    const baseTime = Date.now();
+    const priceVariation = Math.sin(baseTime / 10000) * 0.1 + 1; // Oscillates between 0.9 and 1.1
+
     return [
       {
         address: '0x1234567890123456789012345678901234567890',
-        symbol: 'MOCK1',
-        priceInBNB: 0.001,
-        liquidityBNB: 50,
-        holders: 100,
+        symbol: 'MOMENTUM',
+        priceInBNB: 0.001 * priceVariation,
+        liquidityBNB: 150,
+        holders: 120,
         ageMins: 120,
         taxPct: 5,
         isHoneypot: false,
         ownerRenounced: false,
         lpLocked: true,
-        volumeUSD24h: 10000,
-        priceChange24h: 15.5,
+        volumeUSD24h: 150000, // High volume for momentum
+        priceChange24h: 35.5 * priceVariation,
       },
       {
         address: '0x2234567890123456789012345678901234567890',
-        symbol: 'MOCK2',
-        priceInBNB: 0.0005,
-        liquidityBNB: 30,
-        holders: 80,
+        symbol: 'VOLUME',
+        priceInBNB: 0.0005 * (1 / priceVariation),
+        liquidityBNB: 200,
+        holders: 150,
         ageMins: 60,
         taxPct: 3,
         isHoneypot: false,
         ownerRenounced: true,
         lpLocked: true,
-        volumeUSD24h: 25000,
+        volumeUSD24h: 200000, // Very high volume
         priceChange24h: 45.2,
+      },
+      {
+        address: '0x3234567890123456789012345678901234567890',
+        symbol: 'NEWTOKEN',
+        priceInBNB: 0.002 * priceVariation,
+        liquidityBNB: 120,
+        holders: 90,
+        ageMins: 30,
+        taxPct: 4,
+        isHoneypot: false,
+        ownerRenounced: false,
+        lpLocked: true,
+        volumeUSD24h: 100000,
+        priceChange24h: 80.0, // High price change for new launch
+      },
+      {
+        address: '0x4234567890123456789012345678901234567890',
+        symbol: 'SOCIAL',
+        priceInBNB: 0.0008 * (1 / priceVariation),
+        liquidityBNB: 180,
+        holders: 200,
+        ageMins: 180,
+        taxPct: 6,
+        isHoneypot: false,
+        ownerRenounced: true,
+        lpLocked: true,
+        volumeUSD24h: 120000,
+        priceChange24h: 28.5,
       },
     ];
   }
