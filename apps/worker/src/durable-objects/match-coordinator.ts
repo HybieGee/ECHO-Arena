@@ -247,8 +247,8 @@ export class MatchCoordinator extends DurableObject {
         const createdAt = new Date(attrs.pool_created_at).getTime();
         const ageMins = Math.floor((Date.now() - createdAt) / 1000 / 60);
 
-        // Skip tokens older than 24 hours (1440 mins)
-        if (ageMins > 1440) {
+        // Skip tokens older than 1 week (10080 mins)
+        if (ageMins > 10080) {
           continue;
         }
 
@@ -258,8 +258,17 @@ export class MatchCoordinator extends DurableObject {
         // Convert liquidity from USD to BNB
         const liquidityBNB = parseFloat(attrs.reserve_in_usd) / bnbPriceUSD;
 
-        // Skip if liquidity too low
-        if (liquidityBNB < 5) {
+        // Skip if liquidity too low (require at least 10 BNB for stability)
+        if (liquidityBNB < 10) {
+          continue;
+        }
+
+        // Get 24h volume BEFORE price validation to filter early
+        const volumeUSD24h = parseFloat(attrs.volume_usd?.h24 || '0');
+
+        // Skip if volume too low (require at least $2k daily volume)
+        if (volumeUSD24h < 2000) {
+          console.log(`⚠️ Rejecting ${symbol} - volume too low: $${volumeUSD24h.toFixed(0)}`);
           continue;
         }
 
@@ -273,9 +282,6 @@ export class MatchCoordinator extends DurableObject {
           console.log(`⚠️ Rejecting ${symbol} - price too low: ${priceInBNB}`);
           continue;
         }
-
-        // Get 24h volume
-        const volumeUSD24h = parseFloat(attrs.volume_usd?.h24 || '0');
 
         // Get price change percentage
         const priceChange24h = parseFloat(attrs.price_change_percentage?.h24 || '0');
