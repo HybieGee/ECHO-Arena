@@ -185,7 +185,12 @@ export default function ArenaPage() {
                 <YAxis
                   stroke="#666"
                   tick={{ fill: '#888', fontSize: 11 }}
-                  domain={[0, 10]}
+                  domain={[0, 5]}
+                  ticks={Array.from({ length: 51 }, (_, i) => i * 0.1)}
+                  tickFormatter={(value) => {
+                    // Only show labels for multiples of 0.5
+                    return value % 0.5 === 0 ? value.toFixed(1) : '';
+                  }}
                   label={{
                     value: 'Balance (BNB)',
                     angle: -90,
