@@ -33,13 +33,9 @@ export function executeTrade(
   token: Token,
   currentTime: number
 ): TradeResult {
-  // Validate cooldown
-  if (currentTime - state.lastOrderTime < SIM_CONFIG.COOLDOWN_SEC * 1000) {
-    return {
-      success: false,
-      error: `Cooldown active. ${SIM_CONFIG.COOLDOWN_SEC}s required between orders.`,
-    };
-  }
+  // NOTE: Cooldown check removed - doesn't apply in virtual time simulation
+  // Real-time cooldown would prevent multiple trades within same tick
+  // MAX_ORDERS_PER_BOT_PER_DAY still limits total trading volume
 
   // Validate order count
   if (state.orderCount >= SIM_CONFIG.MAX_ORDERS_PER_BOT_PER_DAY) {

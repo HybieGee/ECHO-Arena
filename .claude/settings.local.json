@@ -36,7 +36,9 @@
       "Bash(timeout 10 bash:*)",
       "Bash(timeout 60 npx wrangler tail:*)",
       "Bash(git restore:*)",
-      "WebFetch(domain:docs.bitquery.io)"
+      "WebFetch(domain:docs.bitquery.io)",
+      "Bash(timeout 300 npx wrangler tail:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []
