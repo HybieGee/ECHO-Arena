@@ -73,6 +73,8 @@ export const api = {
 
   getMatch: (id: string) => fetchAPI(`/match/${id}`),
 
+  getMatchHistory: () => fetchAPI('/match/history'),
+
   // Leaderboard
   getLeaderboard: () => fetchAPI('/leaderboard'),
 

@@ -62,6 +62,46 @@ matchRoutes.get('/current', async (c) => {
 });
 
 /**
+ * GET /api/match/history
+ * Get balance history for current match
+ */
+matchRoutes.get('/history', async (c) => {
+  try {
+    // Get current match
+    const match = await c.env.DB.prepare(
+      'SELECT * FROM matches WHERE status IN (?, ?) ORDER BY start_ts DESC LIMIT 1'
+    )
+      .bind('running', 'pending')
+      .first();
+
+    if (!match) {
+      return c.json({ error: 'No active match' }, 404);
+    }
+
+    // Get history from Durable Object
+    try {
+      const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
+      const stub = c.env.MATCH_COORDINATOR.get(id);
+      const response = await stub.fetch('https://match/history');
+
+      if (!response.ok) {
+        console.error('DO history response not ok:', response.status);
+        return c.json({ balanceHistory: [] });
+      }
+
+      const data = await response.json();
+      return c.json(data);
+    } catch (error) {
+      console.error('Failed to fetch history from DO:', error);
+      return c.json({ balanceHistory: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching match history:', error);
+    return c.json({ error: 'Failed to fetch history' }, 500);
+  }
+});
+
+/**
  * GET /api/match/:id
  * Get specific match details
  */

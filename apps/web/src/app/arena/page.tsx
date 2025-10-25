@@ -22,6 +22,65 @@ const BOT_COLORS = [
   '#80ff00', // lime
 ];
 
+// Custom tooltip that shows only top 10 bots by balance
+const CustomTooltip = ({ active, payload, label, leaderboard }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  // Get all bot data from the payload and sort by balance (highest first)
+  const sortedBots = payload
+    .filter((entry: any) => entry.dataKey && entry.dataKey.startsWith('bot'))
+    .map((entry: any) => {
+      const botId = entry.dataKey.replace('bot', '');
+      const bot = leaderboard.find((b: any) => b.botId.toString() === botId);
+      return {
+        botId,
+        botName: bot?.botName || `Bot #${botId}`,
+        balance: parseFloat(entry.value || 0),
+        color: entry.color,
+      };
+    })
+    .sort((a: any, b: any) => b.balance - a.balance)
+    .slice(0, 10); // Only keep top 10
+
+  return (
+    <div
+      style={{
+        backgroundColor: '#0f0f1e',
+        border: '1px solid #00ffff40',
+        borderRadius: '8px',
+        padding: '12px',
+        color: '#fff',
+        fontSize: '13px',
+      }}
+    >
+      <div style={{ color: '#00ffff', fontWeight: 'bold', marginBottom: '8px' }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {sortedBots.map((bot: any, index: number) => (
+          <div key={bot.botId} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                backgroundColor: bot.color,
+                borderRadius: '2px',
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ flex: 1, color: '#ddd', fontSize: '12px' }}>
+              {bot.botName}
+            </span>
+            <span style={{ fontWeight: 'bold', color: index === 0 ? '#00ff00' : '#fff' }}>
+              {bot.balance.toFixed(4)} BNB
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export default function ArenaPage() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
   const [balanceHistory, setBalanceHistory] = useState<any[]>([]);
@@ -46,7 +105,34 @@ export default function ArenaPage() {
     .sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0))
     .slice(0, 50);
 
-  // Update balance history when new leaderboard data arrives
+  // Fetch history from server on mount
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const data = await api.getMatchHistory();
+
+        if (data.balanceHistory && data.balanceHistory.length > 0) {
+          // Convert server history to chart format
+          const convertedHistory = data.balanceHistory.map((snapshot: any) => {
+            const time = new Date(snapshot.timestamp).toLocaleTimeString('en-US', {
+              hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            const dataPoint: any = { time };
+            snapshot.balances.forEach((bot: any) => {
+              dataPoint[`bot${bot.botId}`] = bot.balance;
+            });
+            return dataPoint;
+          });
+          historyRef.current = convertedHistory;
+          setBalanceHistory(convertedHistory);
+        }
+      } catch (error) {
+        console.error('Failed to fetch history:', error);
+      }
+    }
+    fetchHistory();
+  }, []);
+
   useEffect(() => {
     if (!leaderboard || leaderboard.length === 0) return;
 
@@ -63,22 +149,6 @@ export default function ArenaPage() {
       const botKey = `bot${bot.botId}`;
       dataPoint[botKey] = parseFloat(bot.balance || 0);
     });
-
-    // If this is first load and history is empty, backfill with initial data
-    // This makes lines visible immediately instead of showing dots
-    if (historyRef.current.length === 0) {
-      const backfillPoints = [];
-      for (let i = 10; i >= 0; i--) {
-        const backfillTime = new Date(now.getTime() - i * 5000);
-        const backfillTimeStr = backfillTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const backfillPoint: any = { time: backfillTimeStr };
-        topBots.forEach((bot: any) => {
-          backfillPoint[`bot${bot.botId}`] = parseFloat(bot.balance || 0);
-        });
-        backfillPoints.push(backfillPoint);
-      }
-      historyRef.current = backfillPoints;
-    }
 
     // Add to history (keep last 60 data points = 5 minutes at 5s intervals)
     historyRef.current = [...historyRef.current, dataPoint].slice(-60);
@@ -124,25 +194,7 @@ export default function ArenaPage() {
                     fontSize: 12
                   }}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#0f0f1e',
-                    border: '1px solid #00ffff40',
-                    borderRadius: '8px',
-                    color: '#fff',
-                    fontSize: '13px',
-                  }}
-                  labelStyle={{ color: '#00ffff', fontWeight: 'bold' }}
-                  formatter={(value: any, name: string) => {
-                    const botId = name.replace('bot', '');
-                    const bot = top50Bots.find((b: any) => b.botId.toString() === botId);
-                    const botName = bot?.botName || `Bot #${botId}`;
-                    return [
-                      `${parseFloat(value).toFixed(4)} BNB`,
-                      botName
-                    ];
-                  }}
-                />
+                <Tooltip content={(props) => <CustomTooltip {...props} leaderboard={leaderboard} />} />
                 {top50Bots.map((bot: any, index: number) => (
                   <Line
                     key={`bot${bot.botId}`}

@@ -84,13 +84,6 @@ export default function WhitepaperPage() {
           <h3 className="text-xl font-semibold mb-3 text-echo-magenta mt-6">Code Verification</h3>
           <div className="bg-arena-bg p-4 rounded border border-arena-border">
             <p className="text-gray-300 mb-2">
-              <strong>Open Source:</strong> All code is publicly verifiable
-            </p>
-            <p className="text-gray-300 mb-2">
-              <strong>GitHub Repository:</strong>{' '}
-              <span className="text-neon-cyan">github.com/echo-arena</span> (Coming Soon)
-            </p>
-            <p className="text-gray-300 mb-2">
               <strong>Smart Contract:</strong> Verified on BSCScan
             </p>
             <p className="text-gray-300">

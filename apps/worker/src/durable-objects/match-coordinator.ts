@@ -24,6 +24,11 @@ interface Bot {
   prompt_dsl: StrategyDSL;
 }
 
+interface BalanceSnapshot {
+  timestamp: number;
+  balances: { botId: number; balance: number }[];
+}
+
 interface MatchState {
   matchId: number;
   startTs: number;
@@ -32,6 +37,7 @@ interface MatchState {
   botStates: Map<number, BotState>;
   isRunning: boolean;
   lastTickTs: number;
+  balanceHistory: BalanceSnapshot[];
 }
 
 export class MatchCoordinator extends DurableObject {
@@ -69,6 +75,7 @@ export class MatchCoordinator extends DurableObject {
       botStates,
       isRunning: true,
       lastTickTs: startTs,
+      balanceHistory: [],
     };
 
     // Store initial state
@@ -176,6 +183,21 @@ export class MatchCoordinator extends DurableObject {
 
         // Persist balance snapshot on every tick (since ticks are 1-3 min apart)
         await this.persistBalance(botState, currentTime);
+      }
+
+      // Record balance snapshot for history
+      const snapshot: BalanceSnapshot = {
+        timestamp: currentTime,
+        balances: Array.from(this.state.botStates.entries()).map(([botId, state]) => ({
+          botId,
+          balance: calculateTotalValue(state, priceMap),
+        })),
+      };
+      this.state.balanceHistory.push(snapshot);
+
+      // Keep last 500 snapshots (approx 8-25 hours of history at 1-3 min intervals)
+      if (this.state.balanceHistory.length > 500) {
+        this.state.balanceHistory = this.state.balanceHistory.slice(-500);
       }
 
       this.state.lastTickTs = currentTime;
@@ -479,6 +501,21 @@ export class MatchCoordinator extends DurableObject {
     if (url.pathname === '/leaderboard' && request.method === 'GET') {
       const leaderboard = await this.getLeaderboard();
       return Response.json(leaderboard);
+    }
+
+    if (url.pathname === '/history' && request.method === 'GET') {
+      // Ensure state is loaded
+      if (!this.state) {
+        this.state = await this.ctx.storage.get('matchState');
+      }
+
+      if (!this.state) {
+        return Response.json({ error: 'No active match' });
+      }
+
+      return Response.json({
+        balanceHistory: this.state.balanceHistory || []
+      });
     }
 
     if (url.pathname === '/results' && request.method === 'GET') {
