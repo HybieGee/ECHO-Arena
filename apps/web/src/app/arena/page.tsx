@@ -41,6 +41,11 @@ export default function ArenaPage() {
 
   const leaderboard = leaderboardData?.leaderboard || [];
 
+  // Only show top 50 bots in chart (by balance)
+  const top50Bots = [...leaderboard]
+    .sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0))
+    .slice(0, 50);
+
   // Update balance history when new leaderboard data arrives
   useEffect(() => {
     if (!leaderboard || leaderboard.length === 0) return;
@@ -48,9 +53,13 @@ export default function ArenaPage() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Create data point with all bot balances
+    // Create data point with top 50 bot balances only
     const dataPoint: any = { time: timeStr };
-    leaderboard.forEach((bot: any, index: number) => {
+    const topBots = [...leaderboard]
+      .sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0))
+      .slice(0, 50);
+
+    topBots.forEach((bot: any) => {
       const botKey = `bot${bot.botId}`;
       dataPoint[botKey] = parseFloat(bot.balance || 0);
     });
@@ -67,55 +76,87 @@ export default function ArenaPage() {
       </h1>
 
       {/* Live Balance Chart */}
-      {balanceHistory.length > 0 && leaderboard.length > 0 && (
+      {balanceHistory.length > 0 && top50Bots.length > 0 && (
         <div className="card-arena p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-4 text-echo-cyan">Live Bot Performance</h2>
-          <div className="h-[400px]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-echo-cyan">Live Performance Chart</h2>
+            <div className="text-sm text-gray-400">
+              Showing top {Math.min(top50Bots.length, 50)} bots · Updates every 5s
+            </div>
+          </div>
+
+          <div className="h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={balanceHistory}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
+              <LineChart data={balanceHistory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" opacity={0.3} />
                 <XAxis
                   dataKey="time"
-                  stroke="#888"
-                  tick={{ fill: '#888', fontSize: 12 }}
-                  tickMargin={10}
+                  stroke="#666"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  tickMargin={8}
+                  interval="preserveStartEnd"
                 />
                 <YAxis
-                  stroke="#888"
-                  tick={{ fill: '#888', fontSize: 12 }}
-                  domain={[0.5, 'auto']}
-                  label={{ value: 'Balance (BNB)', angle: -90, position: 'insideLeft', fill: '#888' }}
+                  stroke="#666"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  domain={[0.8, 'auto']}
+                  label={{
+                    value: 'Balance (BNB)',
+                    angle: -90,
+                    position: 'insideLeft',
+                    fill: '#888',
+                    fontSize: 12
+                  }}
                 />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#0f0f1e',
-                    border: '1px solid #ff00ff40',
+                    border: '1px solid #00ffff40',
                     borderRadius: '8px',
                     color: '#fff',
+                    fontSize: '13px',
                   }}
-                  labelStyle={{ color: '#00ffff' }}
-                />
-                <Legend
-                  wrapperStyle={{ color: '#888' }}
-                  formatter={(value) => {
-                    const botId = value.replace('bot', '');
-                    const bot = leaderboard.find((b: any) => b.botId.toString() === botId);
-                    return bot?.botName || `Bot #${botId}`;
+                  labelStyle={{ color: '#00ffff', fontWeight: 'bold' }}
+                  formatter={(value: any, name: string) => {
+                    const botId = name.replace('bot', '');
+                    const bot = top50Bots.find((b: any) => b.botId.toString() === botId);
+                    const botName = bot?.botName || `Bot #${botId}`;
+                    return [
+                      `${parseFloat(value).toFixed(4)} BNB`,
+                      botName
+                    ];
                   }}
                 />
-                {leaderboard.map((bot: any, index: number) => (
+                {top50Bots.map((bot: any, index: number) => (
                   <Line
                     key={`bot${bot.botId}`}
                     type="monotone"
                     dataKey={`bot${bot.botId}`}
                     stroke={BOT_COLORS[index % BOT_COLORS.length]}
-                    strokeWidth={2}
+                    strokeWidth={index < 5 ? 2.5 : 1.5}
                     dot={false}
                     animationDuration={300}
+                    opacity={index < 10 ? 0.9 : 0.6}
                   />
                 ))}
               </LineChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Top 10 Legend - Scrollable */}
+          <div className="mt-4 border-t border-arena-border pt-4">
+            <div className="text-sm text-gray-400 mb-2">Top 10 Bots:</div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 max-h-20 overflow-y-auto custom-scrollbar">
+              {top50Bots.slice(0, 10).map((bot: any, index: number) => (
+                <div key={bot.botId} className="flex items-center gap-2 text-xs">
+                  <div
+                    className="w-3 h-3 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: BOT_COLORS[index % BOT_COLORS.length] }}
+                  />
+                  <span className="text-gray-300 truncate">{bot.botName || `Bot #${bot.botId}`}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
