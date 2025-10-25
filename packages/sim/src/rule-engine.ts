@@ -79,6 +79,85 @@ function filterUniverse(dsl: StrategyDSL, universe: Token[]): Token[] {
 }
 
 /**
+ * Calculate dynamic position size based on signal strength and strategy
+ * This makes each bot's trading amounts unique based on their strategy
+ */
+function calculateDynamicAllocation(
+  dsl: StrategyDSL,
+  state: BotState,
+  signalScore: number,
+  maxAffordable: number,
+  slotsAvailable: number
+): number {
+  // Base allocation from DSL (use as reference point)
+  const baseAllocation = dsl.entry.allocationPerPositionBNB;
+
+  // Calculate risk profile based on stop loss % (lower stop = more conservative)
+  // Stop loss 5-10% = conservative (0.5-0.7x)
+  // Stop loss 15-25% = moderate (0.8-1.0x)
+  // Stop loss 30%+ = aggressive (1.2-1.5x)
+  const stopLoss = dsl.risk.stopLossPct;
+  let riskMultiplier = 1.0;
+  if (stopLoss <= 10) {
+    riskMultiplier = 0.5 + (stopLoss / 10) * 0.2; // 0.5-0.7x
+  } else if (stopLoss <= 25) {
+    riskMultiplier = 0.7 + ((stopLoss - 10) / 15) * 0.3; // 0.7-1.0x
+  } else {
+    riskMultiplier = 1.0 + Math.min((stopLoss - 25) / 25, 0.5); // 1.0-1.5x
+  }
+
+  // Calculate confidence multiplier based on signal strength
+  // Higher signal score = more confidence = larger position
+  let confidenceMultiplier = 1.0;
+  if (dsl.entry.signal === 'momentum') {
+    // Momentum: 30% = 1.0x, 50% = 1.2x, 100%+ = 1.5x
+    const threshold = dsl.entry.threshold;
+    if (signalScore > threshold) {
+      confidenceMultiplier = 1.0 + Math.min((signalScore - threshold) / threshold * 0.5, 0.5);
+    } else {
+      confidenceMultiplier = 0.7 + (signalScore / threshold) * 0.3; // 0.7-1.0x
+    }
+  } else if (dsl.entry.signal === 'volumeSpike') {
+    // Higher volume ratio = more confidence
+    confidenceMultiplier = 0.8 + Math.min(signalScore * 0.2, 0.7); // 0.8-1.5x
+  } else if (dsl.entry.signal === 'newLaunch') {
+    // Newer tokens (higher score) = more aggressive
+    confidenceMultiplier = 0.7 + (signalScore / 10) * 0.8; // 0.7-1.5x
+  } else {
+    // socialBuzz and others
+    confidenceMultiplier = 0.8 + Math.min(signalScore * 0.1, 0.7); // 0.8-1.5x
+  }
+
+  // Diversification factor - more positions = smaller per position
+  // 1 position = 1.2x, 3 positions = 1.0x, 5+ positions = 0.7x
+  let diversificationMultiplier = 1.0;
+  if (dsl.entry.maxPositions === 1) {
+    diversificationMultiplier = 1.2; // All-in strategy
+  } else if (dsl.entry.maxPositions === 2) {
+    diversificationMultiplier = 1.1;
+  } else if (dsl.entry.maxPositions >= 5) {
+    diversificationMultiplier = 0.7; // Scalper strategy
+  }
+
+  // Kelly Criterion-inspired sizing: use % of bankroll based on confidence
+  // Higher confidence + lower risk = larger % of bankroll
+  const kellyPercentage = (confidenceMultiplier * riskMultiplier * diversificationMultiplier) * 0.15; // Max 15% of bankroll
+  const kellyAllocation = state.bnbBalance * kellyPercentage;
+
+  // Use the smaller of: Kelly allocation or DSL base allocation * multipliers
+  const dynamicAllocation = Math.min(
+    kellyAllocation,
+    baseAllocation * riskMultiplier * confidenceMultiplier * diversificationMultiplier
+  );
+
+  // Ensure we don't exceed what's affordable
+  const finalAllocation = Math.min(dynamicAllocation, maxAffordable);
+
+  // Ensure minimum viable trade size
+  return Math.max(finalAllocation, SIM_CONFIG.MIN_TRADE_BNB);
+}
+
+/**
  * Check for entry signals
  */
 function checkEntries(
@@ -139,7 +218,7 @@ function checkEntries(
   const topCandidates = filtered.slice(0, slotsAvailable);
 
   // Generate buy intents
-  for (const { token } of topCandidates) {
+  for (const { token, score } of topCandidates) {
     // Check if we already have this position
     if (state.positions.some(p => p.symbol === token.symbol)) {
       continue;
@@ -154,15 +233,21 @@ function checkEntries(
       continue;
     }
 
-    // Cap allocation to what we can afford
-    const allocationAmount = Math.min(dsl.entry.allocationPerPositionBNB, maxAffordable);
+    // DYNAMIC ALLOCATION: Calculate position size based on signal strength and strategy
+    const allocationAmount = calculateDynamicAllocation(
+      dsl,
+      state,
+      score,
+      maxAffordable,
+      slotsAvailable
+    );
 
     intents.push({
       side: 'buy',
       symbol: token.symbol,
       tokenAddress: token.address,
       amountBNB: allocationAmount,
-      reason: `${dsl.entry.signal} signal (score: ${scored.find(s => s.token === token)?.score.toFixed(2)})`,
+      reason: `${dsl.entry.signal} signal (score: ${score.toFixed(2)}, allocation: ${allocationAmount.toFixed(4)} BNB)`,
     });
   }
 
