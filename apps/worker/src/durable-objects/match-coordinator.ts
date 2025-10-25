@@ -453,6 +453,29 @@ export class MatchCoordinator extends DurableObject {
       return Response.json(result);
     }
 
+    if (url.pathname === '/reset' && request.method === 'POST') {
+      // Clear all corrupted state and restart fresh
+      console.log('🔄 RESETTING MATCH - Clearing all state to fix corrupted balances');
+
+      // Clear all storage
+      await this.ctx.storage.deleteAll();
+
+      // Reset state variable
+      this.state = null;
+
+      // Re-initialize
+      await this.initialize();
+
+      // If bots provided, restart match immediately
+      const body = await request.json();
+      if (body.matchId && body.bots) {
+        console.log(`Restarting match ${body.matchId} with ${body.bots.length} bots`);
+        await this.startMatch(body.matchId, body.startTs, body.endTs, body.bots);
+      }
+
+      return Response.json({ success: true, message: 'Match reset successfully - all balances cleared' });
+    }
+
     if (url.pathname === '/leaderboard' && request.method === 'GET') {
       const leaderboard = await this.getLeaderboard();
       return Response.json(leaderboard);

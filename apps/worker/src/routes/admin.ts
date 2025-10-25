@@ -71,6 +71,62 @@ adminRoutes.post('/match/create', async (c) => {
 });
 
 /**
+ * POST /api/admin/match/:id/reset
+ * Reset a match (clears all corrupted state and restarts)
+ */
+adminRoutes.post('/match/:id/reset', async (c) => {
+  try {
+    const matchId = c.req.param('id');
+
+    // Get match
+    const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id = ?')
+      .bind(matchId)
+      .first();
+
+    if (!match) {
+      return c.json({ error: 'Match not found' }, 404);
+    }
+
+    // Get all bots for this match
+    const bots = await c.env.DB.prepare(
+      'SELECT id, owner_address, prompt_dsl FROM bots WHERE match_id = ?'
+    )
+      .bind(matchId)
+      .all();
+
+    // Reset Durable Object
+    const id = c.env.MATCH_COORDINATOR.idFromName(`match-${matchId}`);
+    const stub = c.env.MATCH_COORDINATOR.get(id);
+
+    const response = await stub.fetch('https://match/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        matchId: parseInt(matchId),
+        startTs: match.start_ts * 1000,
+        endTs: match.end_ts * 1000,
+        bots: (bots.results || []).map((bot: any) => ({
+          id: bot.id,
+          owner_address: bot.owner_address,
+          prompt_dsl: JSON.parse(bot.prompt_dsl),
+        })),
+      }),
+    });
+
+    const result = await response.json();
+
+    return c.json({
+      success: true,
+      message: 'Match reset and restarted with clean state',
+      result,
+    });
+  } catch (error) {
+    console.error('Error resetting match:', error);
+    return c.json({ error: 'Failed to reset match' }, 500);
+  }
+});
+
+/**
  * POST /api/admin/match/:id/start
  * Start a match (initialize Durable Object)
  */
