@@ -21,7 +21,16 @@
       "Read(//c/Users/User/Desktop/Claude/Echo Images/**)",
       "Bash(npx wrangler:*)",
       "Bash(cat:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(timeout 20 npx wrangler:*)",
+      "Bash(timeout 25 npx wrangler tail:*)",
+      "Bash(timeout 15 npx wrangler tail:*)",
+      "WebFetch(domain:gmgn.ai)",
+      "WebSearch",
+      "WebFetch(domain:docs.dexscreener.com)",
+      "WebFetch(domain:api.geckoterminal.com)",
+      "Bash(timeout 30 npx wrangler tail:*)",
+      "Bash(timeout 180 npx wrangler tail:*)"
     ],
     "deny": [],
     "ask": []

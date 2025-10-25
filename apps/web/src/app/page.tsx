@@ -19,7 +19,7 @@ export default function Home() {
   const { data: match } = useQuery({
     queryKey: ['current-match'],
     queryFn: api.getCurrentMatch,
-    refetchInterval: 30000, // Refresh every 30s
+    refetchInterval: 5000, // Refresh every 5s for real-time stats
   });
 
   const { data: config } = useQuery({
@@ -61,10 +61,15 @@ export default function Home() {
 
         <div className="container-arena py-20 md:py-32 text-center relative z-10">
           {/* Main Title with animation */}
-          <div className="mb-6 animate-slide-up">
-            <h1 className="hero-title">
-              ECHO ARENA
-            </h1>
+          <div className="mb-6 animate-slide-up flex flex-col items-center">
+            <Image
+              src="/logotext.png"
+              alt="ECHO ARENA"
+              width={600}
+              height={200}
+              className="w-full max-w-2xl h-auto object-contain mb-4"
+              priority
+            />
             <div className="h-1 w-32 mx-auto bg-gradient-to-r from-transparent via-echo-magenta to-transparent" />
           </div>
 

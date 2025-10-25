@@ -9,6 +9,7 @@ import { Providers } from '@/components/providers';
 import { WalletButton } from '@/components/wallet-button';
 import { LayoutWrapper } from '@/components/layout-wrapper';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -47,11 +48,13 @@ export default function RootLayout({
                   <div className="container-arena py-4">
                     <div className="flex items-center justify-between">
                       <Link href="/" className="flex items-center gap-2 group">
-                        <div className="text-2xl font-orbitron font-bold tracking-wider uppercase">
-                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-echo-magenta via-echo-cyan to-echo-magenta bg-[length:200%_100%] animate-gradient-shift">
-                            ECHO ARENA
-                          </span>
-                        </div>
+                        <Image
+                          src="/logotext.png"
+                          alt="ECHO ARENA"
+                          width={180}
+                          height={60}
+                          className="h-12 w-auto object-contain group-hover:scale-105 transition-transform"
+                        />
                       </Link>
 
                       <nav className="flex items-center gap-6">
@@ -68,10 +71,22 @@ export default function RootLayout({
                           ARENA
                         </Link>
                         <Link
+                          href="/my-bots"
+                          className="text-echo-muted hover:text-echo-magenta transition-all font-medium tracking-wide"
+                        >
+                          MY BOTS
+                        </Link>
+                        <Link
                           href="/winners"
                           className="text-echo-muted hover:text-echo-gold transition-all font-medium tracking-wide"
                         >
                           WINNERS
+                        </Link>
+                        <Link
+                          href="/whitepaper"
+                          className="text-echo-muted hover:text-neon-green transition-all font-medium tracking-wide"
+                        >
+                          WHITEPAPER
                         </Link>
                         <WalletButton />
                       </nav>

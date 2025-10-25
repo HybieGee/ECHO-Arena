@@ -161,18 +161,27 @@ botRoutes.post('/', async (c) => {
           },
           body: JSON.stringify({
             model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 150,
+            max_tokens: 200,
             messages: [{
               role: 'user',
-              content: `Given this trading strategy: "${prompt}"
+              content: `You are a creative bot naming expert. Create a COOL, MEMORABLE trading bot name for this strategy:
 
-Generate:
-1. A short, catchy bot name (2-4 words, no special characters except spaces and hyphens)
-2. A brief description (max 100 characters)
+"${prompt}"
 
-Respond in this exact format:
-NAME: [bot name]
-DESC: [description]`
+Requirements:
+- Name must be 2-4 words max
+- Must sound like a professional trading bot (e.g., "Alpha Hunter", "Momentum Rider", "Volume Sniper")
+- NO generic words like "Bot" or "Trader" in the name
+- Make it catchy and memorable
+- Also create a 1-sentence description (max 100 chars)
+
+Respond EXACTLY in this format:
+NAME: [your creative bot name here]
+DESC: [one sentence description]
+
+Example:
+NAME: Lightning Scalper
+DESC: Aggressive high-frequency bot targeting quick momentum plays with tight stops`
             }]
           }),
         });
@@ -180,11 +189,21 @@ DESC: [description]`
         if (nameResponse.ok) {
           const data = await nameResponse.json() as { content?: Array<{ text?: string }> };
           const text = data.content?.[0]?.text || '';
-          const nameMatch = text.match(/NAME:\s*(.+)/);
-          const descMatch = text.match(/DESC:\s*(.+)/);
+          console.log('Claude name generation response:', text);
 
-          if (nameMatch) botName = nameMatch[1].trim().substring(0, 50);
-          if (descMatch) botDescription = descMatch[1].trim().substring(0, 100);
+          const nameMatch = text.match(/NAME:\s*(.+?)(?:\n|$)/);
+          const descMatch = text.match(/DESC:\s*(.+?)(?:\n|$)/);
+
+          if (nameMatch) {
+            botName = nameMatch[1].trim().substring(0, 50);
+            console.log('Generated bot name:', botName);
+          }
+          if (descMatch) {
+            botDescription = descMatch[1].trim().substring(0, 100);
+            console.log('Generated bot description:', botDescription);
+          }
+        } else {
+          console.error('Claude API error:', nameResponse.status, await nameResponse.text());
         }
       } catch (error) {
         console.error('Failed to generate bot name/description:', error);
@@ -271,12 +290,57 @@ botRoutes.get('/check-eligibility/:address', async (c) => {
 });
 
 /**
+ * GET /api/bot/by-owner/:address
+ * Get all bots for a specific owner address
+ */
+botRoutes.get('/by-owner/:address', async (c) => {
+  try {
+    const address = c.req.param('address').toLowerCase();
+
+    // Get all bots for this owner with match info
+    const bots = await c.env.DB.prepare(
+      `SELECT
+        bots.*,
+        matches.status as match_status,
+        matches.start_ts,
+        matches.end_ts
+      FROM bots
+      LEFT JOIN matches ON bots.match_id = matches.id
+      WHERE bots.owner_address = ?
+      ORDER BY bots.created_at DESC`
+    )
+      .bind(address)
+      .all();
+
+    const botList = (bots.results || []).map((bot: any) => ({
+      id: bot.id,
+      matchId: bot.match_id,
+      matchStatus: bot.match_status,
+      name: bot.bot_name,
+      description: bot.bot_description,
+      prompt: bot.prompt_raw,
+      createdAt: bot.created_at,
+      matchStartTs: bot.start_ts,
+      matchEndTs: bot.end_ts,
+    }));
+
+    return c.json({
+      bots: botList,
+      count: botList.length,
+    });
+  } catch (error) {
+    console.error('Error fetching bots by owner:', error);
+    return c.json({ error: 'Failed to fetch bots' }, 500);
+  }
+});
+
+/**
  * GET /api/bot/:id
- * Get bot details
+ * Get bot details with live trading data
  */
 botRoutes.get('/:id', async (c) => {
   try {
-    const botId = c.req.param('id');
+    const botId = parseInt(c.req.param('id'));
 
     const bot = await c.env.DB.prepare('SELECT * FROM bots WHERE id = ?')
       .bind(botId)
@@ -286,14 +350,59 @@ botRoutes.get('/:id', async (c) => {
       return c.json({ error: 'Bot not found' }, 404);
     }
 
-    // Get orders
+    // Get match info to check if it's running
+    const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id = ?')
+      .bind(bot.match_id)
+      .first();
+
+    // Try to get live data from Durable Object if match is running
+    let liveData: any = null;
+
+    if (match && match.status === 'running') {
+      try {
+        const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
+        const stub = c.env.MATCH_COORDINATOR.get(id);
+        const response = await stub.fetch(`https://match/bot/${botId}`);
+
+        if (response.ok) {
+          liveData = await response.json();
+          console.log('Live bot data from DO:', JSON.stringify(liveData));
+        } else {
+          console.error('DO bot details fetch failed:', response.status);
+        }
+      } catch (error) {
+        console.error('Failed to fetch bot details from DO:', error);
+        // Continue with static D1 data
+      }
+    }
+
+    // If we have live data, use it
+    if (liveData && !liveData.error) {
+      return c.json({
+        bot: {
+          id: bot.id,
+          matchId: bot.match_id,
+          ownerAddress: bot.owner_address,
+          name: bot.bot_name,
+          description: bot.bot_description,
+          prompt: bot.prompt_raw,
+          dsl: JSON.parse(bot.prompt_dsl),
+          createdAt: bot.created_at,
+        },
+        balance: liveData.balance,
+        positions: liveData.positions || [],
+        orders: liveData.orders || [],
+        stats: liveData.stats || {},
+      });
+    }
+
+    // Fallback to D1 data for settled matches
     const orders = await c.env.DB.prepare(
-      'SELECT * FROM orders WHERE bot_id = ? ORDER BY ts DESC'
+      'SELECT * FROM orders WHERE bot_id = ? ORDER BY ts DESC LIMIT 50'
     )
       .bind(botId)
       .all();
 
-    // Get balances
     const balances = await c.env.DB.prepare(
       'SELECT * FROM balances WHERE bot_id = ? ORDER BY ts DESC LIMIT 100'
     )
@@ -305,12 +414,21 @@ botRoutes.get('/:id', async (c) => {
         id: bot.id,
         matchId: bot.match_id,
         ownerAddress: bot.owner_address,
+        name: bot.bot_name,
+        description: bot.bot_description,
         prompt: bot.prompt_raw,
         dsl: JSON.parse(bot.prompt_dsl),
         createdAt: bot.created_at,
       },
+      balance: balances.results?.[0]?.bnb_balance || 1.0,
+      positions: [],
       orders: orders.results || [],
-      balances: balances.results || [],
+      stats: {
+        totalOrders: orders.results?.length || 0,
+        totalScans: 0,
+        realizedPnL: 0,
+        unrealizedPnL: 0,
+      },
     });
   } catch (error) {
     console.error('Error fetching bot:', error);

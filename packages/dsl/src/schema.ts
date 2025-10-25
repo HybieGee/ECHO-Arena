@@ -23,9 +23,9 @@ export const UniverseSchema = z.object({
 // Entry conditions: when to buy
 export const EntrySchema = z.object({
   signal: SignalTypeSchema,
-  threshold: z.number().positive().default(2.0), // e.g., z-score or multiplier
+  threshold: z.number().positive().min(0.5).max(10).default(2.0), // Signal strength multiplier - lower = more aggressive, higher = more selective
   maxPositions: z.number().int().positive().max(5).default(3),
-  allocationPerPositionBNB: z.number().positive().max(10).default(2), // max 10 BNB per position
+  allocationPerPositionBNB: z.number().positive().min(0.01).max(1.0).default(0.3), // Capped at 1 BNB (start balance) with 0.01 BNB minimum
 });
 
 // Risk management rules
@@ -85,7 +85,7 @@ export const DEFAULT_STRATEGY: StrategyDSL = {
     signal: 'momentum',
     threshold: 2.0,
     maxPositions: 3,
-    allocationPerPositionBNB: 2,
+    allocationPerPositionBNB: 0.3,
   },
   risk: {
     takeProfitPct: 20,

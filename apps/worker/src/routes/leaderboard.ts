@@ -69,6 +69,7 @@ leaderboardRoutes.get('/', async (c) => {
         balance: liveEntry?.balance || 1.0,
         pnl: liveEntry?.gain_pct || 0,
         orders: liveEntry?.trades || 0,
+        scans: liveEntry?.scans || 0,
         status: liveEntry ? 'trading' : 'waiting',
       };
     });

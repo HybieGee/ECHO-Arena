@@ -66,6 +66,8 @@ export const api = {
 
   getBot: (id: string) => fetchAPI(`/bot/${id}`),
 
+  getBotsByOwner: (address: string) => fetchAPI(`/bot/by-owner/${address}`),
+
   // Match
   getCurrentMatch: () => fetchAPI('/match/current'),
 

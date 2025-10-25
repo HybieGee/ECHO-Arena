@@ -173,55 +173,70 @@ async function llmParse(prompt: string, apiKey: string): Promise<ParseResult> {
         messages: [
           {
             role: 'user',
-            content: `You are a trading strategy parser. Convert this user prompt into a JSON trading strategy DSL.
+            content: `You are an expert trading strategy parser. Your job is to accurately interpret each user's UNIQUE trading strategy from their prompt and convert it to a precise JSON DSL.
 
 User prompt: "${prompt}"
 
-Respond ONLY with valid JSON matching this schema:
+CRITICAL RULES:
+1. Each user's prompt should result in a UNIQUE strategy - extract their specific intent, don't use defaults unless necessary
+2. Pay close attention to: entry signals, risk tolerance, position sizing, time horizons
+3. Interpret aggressive/conservative language into appropriate percentages
+4. Extract ANY numbers mentioned (%, BNB amounts, time periods)
+
+Signal Types (choose the ONE that best matches their intent):
+- "momentum": Price trending up, moving averages, price action, bullish movement, pumping
+- "volumeSpike": High volume, volume surge, unusual activity, volume breakout
+- "newLaunch": New tokens, fresh launches, recently launched, new listings, early entry
+- "socialBuzz": Twitter trending, social media, community hype, viral tokens
+
+Parameter Extraction Guide:
+- takeProfitPct: Look for "profit", "target", "gain", "up X%", "sell at X%" (5-500%)
+  * Conservative: 10-30%, Moderate: 30-100%, Aggressive: 100-500%
+- stopLossPct: Look for "loss", "stop", "risk", "down X%", "cut losses" (5-50%)
+  * Tight: 5-10%, Normal: 10-20%, Loose: 20-50%
+- maxPositions: "X tokens", "X positions", "diversified", "focused" (1-5)
+  * Focused: 1-2, Balanced: 3, Diversified: 4-5
+- allocationPerPositionBNB: "X BNB each", "per token", "per position" (0.1-1.0)
+- threshold: Entry signal strength multiplier (0.5-5.0)
+  * Selective: 3-5, Moderate: 2-3, Aggressive: 0.5-2
+- timeLimitMin: "hold for X hours/minutes", "quick flip", "day trade" (0-1440)
+  * Quick: 5-30 min, Day: 60-480 min, No limit: 0
+- ageMinutesMax: "new tokens only", "within X hours", "fresh launches" (1-10080)
+  * Very new: 5-60 min, New: 60-360 min, Any: 1440+ min
+
+Response Schema:
 {
   "universe": {
-    "ageMinutesMax": 1-10080,
-    "minLiquidityBNB": 10-1000,
-    "minHolders": 50
+    "ageMinutesMax": number (1-10080),
+    "minLiquidityBNB": number (5-1000),
+    "minHolders": number (50-1000)
   },
   "entry": {
     "signal": "momentum" | "volumeSpike" | "newLaunch" | "socialBuzz",
-    "threshold": 2.0,
-    "maxPositions": 1-5,
-    "allocationPerPositionBNB": 0.5-10
+    "threshold": number (0.5-5.0),
+    "maxPositions": number (1-5),
+    "allocationPerPositionBNB": number (0.1-1.0)
   },
   "risk": {
-    "takeProfitPct": 5-500,
-    "stopLossPct": 5-50,
+    "takeProfitPct": number (5-500),
+    "stopLossPct": number (5-50),
     "cooldownSec": 5
   },
   "exits": {
-    "timeLimitMin": 0-1440,
-    "trailingStopPct": 0-30
+    "timeLimitMin": number (0-1440),
+    "trailingStopPct": number (0-30)
   },
   "blacklist": {
-    "taxPctMax": 0-100,
+    "taxPctMax": number (0-100),
     "honeypot": true,
-    "ownerRenouncedRequired": false,
-    "lpLockedRequired": true
+    "ownerRenouncedRequired": boolean,
+    "lpLockedRequired": boolean
   }
 }
 
-Extract the strategy parameters from the user's intent:
-- signal: "momentum" for trending, "volumeSpike" for volume, "newLaunch" for new tokens, "socialBuzz" for social
-- maxPositions: how many tokens to hold at once (1-5)
-- allocationPerPositionBNB: how much BNB per token (0.5-10)
-- takeProfitPct: profit target percentage (5-500%)
-- stopLossPct: stop loss percentage (5-50%)
-- trailingStopPct: trailing stop (0 = none, or 1-30%)
-- timeLimitMin: max hold time in minutes (0 = no limit)
-- minLiquidityBNB: minimum pool liquidity
-- ageMinutesMax: max token age in minutes
+IMPORTANT: Interpret the user's EXACT intent. Don't default to generic values. Extract their unique strategy.
 
-Defaults if not specified:
-{"universe":{"ageMinutesMax":1440,"minLiquidityBNB":50,"minHolders":50},"entry":{"signal":"momentum","threshold":2,"maxPositions":3,"allocationPerPositionBNB":2},"risk":{"takeProfitPct":20,"stopLossPct":15,"cooldownSec":5},"exits":{"timeLimitMin":0,"trailingStopPct":0},"blacklist":{"taxPctMax":10,"honeypot":true,"ownerRenouncedRequired":false,"lpLockedRequired":true}}
-
-Return ONLY the JSON object, no explanation.`,
+Return ONLY the JSON object, no markdown, no explanation.`,
           },
         ],
       }),

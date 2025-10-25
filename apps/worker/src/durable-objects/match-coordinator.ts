@@ -74,21 +74,23 @@ export class MatchCoordinator extends DurableObject {
     // Store initial state
     await this.ctx.storage.put('matchState', this.state);
 
-    // Schedule first alarm to start simulation loop (run immediately)
-    await this.ctx.storage.setAlarm(Date.now() + 100);
+    // Schedule first alarm to start simulation loop (start in 1 minute)
+    await this.ctx.storage.setAlarm(Date.now() + 60000);
 
     return { success: true, message: 'Match started' };
   }
 
   /**
-   * Alarm handler - runs simulation tick every 10 seconds
+   * Alarm handler - runs simulation tick every 1-3 minutes
    */
   async alarm() {
     await this.simulationTick();
 
     // Schedule next alarm if match is still running
     if (this.state && this.state.isRunning) {
-      await this.ctx.storage.setAlarm(Date.now() + 10000); // 10 seconds
+      // Random interval between 1-3 minutes (60000-180000 ms)
+      const randomInterval = 60000 + Math.random() * 120000;
+      await this.ctx.storage.setAlarm(Date.now() + randomInterval);
     }
   }
 
@@ -130,9 +132,13 @@ export class MatchCoordinator extends DurableObject {
       // Process each bot in deterministic order
       for (const bot of this.state.bots) {
         const botState = this.state.botStates.get(bot.id);
-        if (!botState) continue;
+        if (!botState) {
+          console.error(`Bot ${bot.id} state not found`);
+          continue;
+        }
 
         // Evaluate strategy and get trade intents
+        botState.scanCount++; // Increment scan counter
         const intents = evaluateStrategy(
           bot.prompt_dsl,
           botState,
@@ -141,26 +147,35 @@ export class MatchCoordinator extends DurableObject {
           bot.id // Use bot ID as RNG seed for determinism
         );
 
+        if (intents.length > 0) {
+          console.log(`Bot ${bot.id}: Scan #${botState.scanCount}, ${intents.length} trade intents`);
+        }
+
         // Execute each trade intent
         for (const intent of intents) {
+          console.log(`Bot ${bot.id}: Executing ${intent.side} ${intent.symbol} for ${intent.amountBNB} BNB`);
           const token = universe.find(t => t.symbol === intent.symbol);
-          if (!token) continue;
+          if (!token) {
+            console.error(`Token ${intent.symbol} not found in universe`);
+            continue;
+          }
 
           const result = executeTrade(botState, intent, token, currentTime);
 
           if (result.success && result.order) {
+            console.log(`Bot ${bot.id}: Trade successful! Order ID ${result.order.id}`);
             // Persist order to storage
             await this.persistOrder(result.order);
+          } else {
+            console.error(`Bot ${bot.id}: Trade failed - ${result.error}`);
           }
         }
 
         // Update unrealized PnL
         updateUnrealizedPnL(botState, priceMap);
 
-        // Persist balance snapshot every minute
-        if (currentTime - this.state.lastTickTs >= 60000) {
-          await this.persistBalance(botState, currentTime);
-        }
+        // Persist balance snapshot on every tick (since ticks are 1-3 min apart)
+        await this.persistBalance(botState, currentTime);
       }
 
       this.state.lastTickTs = currentTime;
@@ -171,19 +186,116 @@ export class MatchCoordinator extends DurableObject {
   }
 
   /**
-   * Fetch token universe from Dexscreener
-   * Mock implementation - returns sample tokens with varying prices
+   * Fetch token universe from GeckoTerminal API
+   * Gets new and trending BSC tokens from four.meme and other DEXes
    */
   private async fetchUniverse(): Promise<Token[]> {
-    // TODO: Implement actual Dexscreener API integration
-    // For now, return mock tokens with simulated price movement
+    try {
+      // Fetch both new and trending pools from BSC
+      const [newPoolsResponse, trendingPoolsResponse] = await Promise.all([
+        fetch('https://api.geckoterminal.com/api/v2/networks/bsc/new_pools?page=1'),
+        fetch('https://api.geckoterminal.com/api/v2/networks/bsc/trending_pools?page=1'),
+      ]);
+
+      const newPools = await newPoolsResponse.json();
+      const trendingPools = await trendingPoolsResponse.json();
+
+      // Combine and deduplicate pools
+      const allPoolsMap = new Map();
+
+      [...(newPools.data || []), ...(trendingPools.data || [])].forEach((pool: any) => {
+        allPoolsMap.set(pool.id, pool);
+      });
+
+      // Get BNB price in USD for conversion
+      const bnbPriceUSD = 600; // Approximate BNB price, could fetch live
+
+      // Transform pools to Token format
+      const tokens: Token[] = [];
+
+      for (const pool of Array.from(allPoolsMap.values()).slice(0, 50)) {
+        const attrs = pool.attributes;
+
+        // Skip if missing critical data
+        if (!attrs.base_token_price_native_currency || !attrs.reserve_in_usd) {
+          continue;
+        }
+
+        // Calculate age in minutes
+        const createdAt = new Date(attrs.pool_created_at).getTime();
+        const ageMins = Math.floor((Date.now() - createdAt) / 1000 / 60);
+
+        // Skip tokens older than 24 hours (1440 mins)
+        if (ageMins > 1440) {
+          continue;
+        }
+
+        // Extract token symbol from pool name (format: "TOKEN / BNB")
+        const symbol = attrs.name.split(' / ')[0].substring(0, 20); // Limit symbol length
+
+        // Convert liquidity from USD to BNB
+        const liquidityBNB = parseFloat(attrs.reserve_in_usd) / bnbPriceUSD;
+
+        // Skip if liquidity too low
+        if (liquidityBNB < 5) {
+          continue;
+        }
+
+        // Get 24h volume
+        const volumeUSD24h = parseFloat(attrs.volume_usd?.h24 || '0');
+
+        // Get price change percentage
+        const priceChange24h = parseFloat(attrs.price_change_percentage?.h24 || '0');
+
+        // Estimate holder count based on transaction activity
+        const txData = attrs.transactions?.h24 || {};
+        const holders = Math.max(
+          (txData.buyers || 0) + (txData.sellers || 0),
+          50 // Minimum estimate
+        );
+
+        tokens.push({
+          address: pool.relationships?.base_token?.data?.id?.split('_')[1] || pool.id,
+          symbol,
+          priceInBNB: parseFloat(attrs.base_token_price_native_currency),
+          liquidityBNB,
+          holders,
+          ageMins,
+          taxPct: 0, // GeckoTerminal doesn't provide tax info, assume 0
+          isHoneypot: false, // Assume verified pools on GeckoTerminal are safe
+          ownerRenounced: false, // Unknown, assume false for safety
+          lpLocked: true, // Assume true for pools on GeckoTerminal
+          volumeUSD24h,
+          priceChange24h,
+        });
+      }
+
+      console.log(`Fetched ${tokens.length} tokens from BSC (new + trending)`);
+
+      // Return at least some tokens, fallback to mock if API fails
+      if (tokens.length === 0) {
+        console.warn('No tokens fetched from GeckoTerminal, using fallback token');
+        return this.getFallbackTokens();
+      }
+
+      return tokens;
+    } catch (error) {
+      console.error('Error fetching universe from GeckoTerminal:', error);
+      return this.getFallbackTokens();
+    }
+  }
+
+  /**
+   * Fallback tokens in case API fails
+   */
+  private getFallbackTokens(): Token[] {
     const baseTime = Date.now();
-    const priceVariation = Math.sin(baseTime / 10000) * 0.1 + 1; // Oscillates between 0.9 and 1.1
+    const priceVariation = Math.sin(baseTime / 10000) * 0.1 + 1;
 
     return [
       {
         address: '0x1234567890123456789012345678901234567890',
-        symbol: 'MOMENTUM',
+        symbol: 'FALLBACK',
         priceInBNB: 0.001 * priceVariation,
         liquidityBNB: 150,
         holders: 120,
@@ -192,50 +304,8 @@ export class MatchCoordinator extends DurableObject {
         isHoneypot: false,
         ownerRenounced: false,
         lpLocked: true,
-        volumeUSD24h: 150000, // High volume for momentum
+        volumeUSD24h: 150000,
         priceChange24h: 35.5 * priceVariation,
-      },
-      {
-        address: '0x2234567890123456789012345678901234567890',
-        symbol: 'VOLUME',
-        priceInBNB: 0.0005 * (1 / priceVariation),
-        liquidityBNB: 200,
-        holders: 150,
-        ageMins: 60,
-        taxPct: 3,
-        isHoneypot: false,
-        ownerRenounced: true,
-        lpLocked: true,
-        volumeUSD24h: 200000, // Very high volume
-        priceChange24h: 45.2,
-      },
-      {
-        address: '0x3234567890123456789012345678901234567890',
-        symbol: 'NEWTOKEN',
-        priceInBNB: 0.002 * priceVariation,
-        liquidityBNB: 120,
-        holders: 90,
-        ageMins: 30,
-        taxPct: 4,
-        isHoneypot: false,
-        ownerRenounced: false,
-        lpLocked: true,
-        volumeUSD24h: 100000,
-        priceChange24h: 80.0, // High price change for new launch
-      },
-      {
-        address: '0x4234567890123456789012345678901234567890',
-        symbol: 'SOCIAL',
-        priceInBNB: 0.0008 * (1 / priceVariation),
-        liquidityBNB: 180,
-        holders: 200,
-        ageMins: 180,
-        taxPct: 6,
-        isHoneypot: false,
-        ownerRenounced: true,
-        lpLocked: true,
-        volumeUSD24h: 120000,
-        priceChange24h: 28.5,
       },
     ];
   }
@@ -345,6 +415,7 @@ export class MatchCoordinator extends DurableObject {
         balance: totalValue,
         gain_pct: gainPct,
         trades: botState.orderCount,
+        scans: botState.scanCount,
       });
     }
 
@@ -381,6 +452,135 @@ export class MatchCoordinator extends DurableObject {
       return Response.json(results || []);
     }
 
+    if (url.pathname.startsWith('/bot/') && request.method === 'GET') {
+      const botId = parseInt(url.pathname.split('/')[2]);
+      const botDetails = await this.getBotDetails(botId);
+      return Response.json(botDetails);
+    }
+
     return new Response('Not found', { status: 404 });
+  }
+
+  /**
+   * Get detailed trading data for a specific bot
+   */
+  async getBotDetails(botId: number) {
+    // Ensure state is loaded
+    if (!this.state) {
+      this.state = await this.ctx.storage.get('matchState');
+    }
+
+    if (!this.state) {
+      return { error: 'No active match' };
+    }
+
+    const botState = this.state.botStates.get(botId);
+    if (!botState) {
+      return { error: 'Bot not found in match' };
+    }
+
+    // Get orders from storage
+    const orders = (await this.ctx.storage.get('orders')) || [];
+    const botOrders = orders.filter((o: any) => o.botId === botId);
+
+    // Get current universe for position valuation
+    const universe = await this.fetchUniverse();
+    const priceMap = new Map<string, number>();
+    for (const token of universe) {
+      priceMap.set(token.symbol, token.priceInBNB);
+    }
+
+    // Calculate position details with current prices
+    const positions = botState.positions.map(pos => {
+      const currentPrice = priceMap.get(pos.symbol) || pos.avgPrice;
+      const marketValue = pos.qty * currentPrice;
+      const costBasis = pos.qty * pos.avgPrice;
+      const unrealizedPnL = marketValue - costBasis;
+      const unrealizedPnLPct = ((currentPrice - pos.avgPrice) / pos.avgPrice) * 100;
+
+      return {
+        symbol: pos.symbol,
+        qty: pos.qty,
+        avgPrice: pos.avgPrice,
+        currentPrice,
+        marketValue,
+        costBasis,
+        unrealizedPnL,
+        unrealizedPnLPct,
+        entryTime: pos.entryTime,
+      };
+    });
+
+    // Calculate P&L for completed trades (buy-sell pairs)
+    const completedTrades: any[] = [];
+    const symbolTrades = new Map<string, any[]>();
+
+    // Group orders by symbol
+    for (const order of botOrders) {
+      if (!symbolTrades.has(order.symbol)) {
+        symbolTrades.set(order.symbol, []);
+      }
+      symbolTrades.get(order.symbol)!.push(order);
+    }
+
+    // Match buy-sell pairs and calculate P&L
+    for (const [symbol, trades] of symbolTrades.entries()) {
+      const buys = trades.filter(t => t.side === 'buy');
+      const sells = trades.filter(t => t.side === 'sell');
+
+      // Match each sell with previous buys
+      for (const sell of sells) {
+        const correspondingBuys = buys.filter(b => b.ts < sell.ts);
+        if (correspondingBuys.length > 0) {
+          // Use most recent buy before this sell
+          const buy = correspondingBuys[correspondingBuys.length - 1];
+
+          // Calculate P&L
+          const costBasis = buy.qty * buy.fillPrice;
+          const proceeds = sell.qty * sell.fillPrice;
+          const pnl = proceeds - costBasis;
+          const pnlPct = (pnl / costBasis) * 100;
+
+          completedTrades.push({
+            symbol,
+            buyTime: buy.ts,
+            sellTime: sell.ts,
+            buyPrice: buy.fillPrice,
+            sellPrice: sell.fillPrice,
+            qty: sell.qty,
+            costBasis,
+            proceeds,
+            pnl,
+            pnlPct,
+            holdTime: Math.floor((sell.ts - buy.ts) / 1000 / 60), // minutes
+          });
+        }
+      }
+    }
+
+    // Sort by P&L to get best and worst trades
+    const sortedByPnL = [...completedTrades].sort((a, b) => b.pnl - a.pnl);
+    const bestTrades = sortedByPnL.slice(0, 5); // Top 5 best trades
+    const worstTrades = sortedByPnL.slice(-5).reverse(); // Top 5 worst trades
+
+    return {
+      botId,
+      balance: botState.bnbBalance,
+      positions,
+      orders: botOrders.slice(-50), // Last 50 orders
+      completedTrades,
+      bestTrades,
+      worstTrades,
+      stats: {
+        totalOrders: botState.orderCount,
+        totalScans: botState.scanCount,
+        realizedPnL: botState.pnlRealized,
+        unrealizedPnL: botState.pnlUnrealized,
+        totalTrades: completedTrades.length,
+        avgPnLPerTrade: completedTrades.length > 0
+          ? completedTrades.reduce((sum, t) => sum + t.pnl, 0) / completedTrades.length
+          : 0,
+      },
+    };
   }
 }

@@ -21,23 +21,14 @@ export default function WinnersPage() {
       <div className="card-arena">
         <div className="text-center text-gray-400 py-12">
           <div className="text-6xl mb-4">🏆</div>
-          <h2 className="text-2xl font-bold mb-2">Coming Soon</h2>
+          <h2 className="text-2xl font-bold mb-2">No Winners Yet</h2>
           <p>
             Historical match results and winner leaderboard will be displayed here.
           </p>
+          <p className="mt-4 text-sm">
+            Complete a match to see winners!
+          </p>
         </div>
-      </div>
-
-      {/* Example winner row */}
-      <div className="grid gap-6 mt-8">
-        <WinnerCard
-          matchId={1}
-          date="2025-01-15"
-          winner="0x1234...5678"
-          gain="245.8%"
-          prize="2.458 BNB"
-          resultHash="0xabc..."
-        />
       </div>
     </div>
   );

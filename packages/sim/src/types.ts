@@ -45,6 +45,7 @@ export interface BotState {
   orders: Order[];
   lastOrderTime: number;
   orderCount: number;
+  scanCount: number; // Number of strategy evaluations performed
   pnlRealized: number;
   pnlUnrealized: number;
 }

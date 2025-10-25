@@ -7,6 +7,9 @@ export const SIM_CONFIG = {
   // Starting balance for each bot
   START_BALANCE_BNB: 1.0,
 
+  // Minimum viable trade size (to prevent dust trades)
+  MIN_TRADE_BNB: 0.01,
+
   // Trading fees (0.25% per trade)
   TAKER_FEE_PCT: 0.25,
 
@@ -18,7 +21,7 @@ export const SIM_CONFIG = {
   SLIPPAGE_PCT: 0.1,
 
   // Order limits
-  MAX_ORDERS_PER_BOT_PER_DAY: 60,
+  MAX_ORDERS_PER_BOT_PER_DAY: 1000,
   COOLDOWN_SEC: 5,
 
   // Universe refresh cadence

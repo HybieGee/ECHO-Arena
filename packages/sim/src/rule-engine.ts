@@ -111,10 +111,32 @@ function checkEntries(
     return a.token.address.localeCompare(b.token.address);
   });
 
+  // Filter by threshold based on signal type
+  // For momentum: threshold is minimum % price change (e.g., 30 for 30%)
+  // For volumeSpike: threshold is volume/liquidity ratio
+  // For newLaunch: threshold is selectivity (higher = newer only)
+  // For socialBuzz: threshold is minimum holder count multiplier
+  const thresholdValue = dsl.entry.threshold;
+
+  let filtered = scored;
+
+  // Apply signal-specific threshold logic
+  if (dsl.entry.signal === 'momentum') {
+    // Threshold as minimum price change percentage
+    filtered = scored.filter(s => s.score >= thresholdValue);
+  } else if (dsl.entry.signal === 'volumeSpike') {
+    // Threshold as volume/liquidity ratio
+    filtered = scored.filter(s => s.score >= thresholdValue);
+  } else if (dsl.entry.signal === 'newLaunch') {
+    // Higher threshold = newer tokens only (inverse relationship for age)
+    filtered = scored.filter(s => s.score >= (10 - thresholdValue));
+  } else {
+    // socialBuzz and other signals
+    filtered = scored.filter(s => s.score >= thresholdValue);
+  }
+
   // Take top candidates that meet threshold
-  const topCandidates = scored
-    .filter(s => s.score >= dsl.entry.threshold)
-    .slice(0, slotsAvailable);
+  const topCandidates = filtered.slice(0, slotsAvailable);
 
   // Generate buy intents
   for (const { token } of topCandidates) {
@@ -123,16 +145,23 @@ function checkEntries(
       continue;
     }
 
-    // Check if we have enough balance
-    if (state.bnbBalance < dsl.entry.allocationPerPositionBNB) {
+    // Calculate max affordable amount (with 1% safety margin for fees)
+    const safetyMargin = 0.01; // 1% margin for fees and slippage
+    const maxAffordable = state.bnbBalance * (1 - safetyMargin);
+
+    // Skip if we can't afford even the minimum viable trade
+    if (maxAffordable < SIM_CONFIG.MIN_TRADE_BNB) {
       continue;
     }
+
+    // Cap allocation to what we can afford
+    const allocationAmount = Math.min(dsl.entry.allocationPerPositionBNB, maxAffordable);
 
     intents.push({
       side: 'buy',
       symbol: token.symbol,
       tokenAddress: token.address,
-      amountBNB: dsl.entry.allocationPerPositionBNB,
+      amountBNB: allocationAmount,
       reason: `${dsl.entry.signal} signal (score: ${scored.find(s => s.token === token)?.score.toFixed(2)})`,
     });
   }
@@ -160,14 +189,10 @@ function checkExits(
   for (const position of state.positions) {
     const token = priceMap.get(position.symbol);
     if (!token) {
-      // Token not in current universe - exit position
-      intents.push({
-        side: 'sell',
-        symbol: position.symbol,
-        tokenAddress: position.tokenAddress,
-        amountBNB: position.qty * position.avgPrice, // Sell entire position
-        reason: 'Token no longer in universe',
-      });
+      // Token not in current universe - skip for now, don't force sell
+      // The universe refreshes every 10s and tokens rotate in/out
+      // Only sell based on actual price movements, not API pagination
+      console.log(`Position ${position.symbol} not in current universe, holding position`);
       continue;
     }
 
@@ -175,8 +200,11 @@ function checkExits(
     const entryPrice = position.avgPrice;
     const pnlPct = ((currentPrice - entryPrice) / entryPrice) * 100;
 
+    console.log(`Position ${position.symbol}: Entry ${entryPrice.toFixed(8)}, Current ${currentPrice.toFixed(8)}, P&L ${pnlPct.toFixed(2)}%`);
+
     // Check take profit
     if (pnlPct >= dsl.risk.takeProfitPct) {
+      console.log(`TAKE PROFIT triggered for ${position.symbol} at ${pnlPct.toFixed(2)}%`);
       intents.push({
         side: 'sell',
         symbol: position.symbol,
@@ -189,6 +217,7 @@ function checkExits(
 
     // Check stop loss
     if (pnlPct <= -dsl.risk.stopLossPct) {
+      console.log(`STOP LOSS triggered for ${position.symbol} at ${pnlPct.toFixed(2)}%`);
       intents.push({
         side: 'sell',
         symbol: position.symbol,
@@ -199,17 +228,20 @@ function checkExits(
       continue;
     }
 
-    // Check time limit
-    const timeSinceEntry = (currentTime - position.entryTime) / 1000 / 60; // minutes
-    if (timeSinceEntry >= dsl.exits.timeLimitMin) {
-      intents.push({
-        side: 'sell',
-        symbol: position.symbol,
-        tokenAddress: position.tokenAddress,
-        amountBNB: position.qty * currentPrice,
-        reason: `Time limit (${timeSinceEntry.toFixed(0)} min)`,
-      });
-      continue;
+    // Check time limit (only if configured)
+    if (dsl.exits.timeLimitMin > 0) {
+      const timeSinceEntry = (currentTime - position.entryTime) / 1000 / 60; // minutes
+      if (timeSinceEntry >= dsl.exits.timeLimitMin) {
+        console.log(`TIME LIMIT triggered for ${position.symbol} after ${timeSinceEntry.toFixed(0)} min`);
+        intents.push({
+          side: 'sell',
+          symbol: position.symbol,
+          tokenAddress: position.tokenAddress,
+          amountBNB: position.qty * currentPrice,
+          reason: `Time limit (${timeSinceEntry.toFixed(0)} min)`,
+        });
+        continue;
+      }
     }
 
     // TODO: Implement trailing stop (requires tracking high water mark)

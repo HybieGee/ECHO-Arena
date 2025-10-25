@@ -17,6 +17,7 @@ export function createBotState(botId: number): BotState {
     orders: [],
     lastOrderTime: 0,
     orderCount: 0,
+    scanCount: 0,
     pnlRealized: 0,
     pnlUnrealized: 0,
   };
@@ -67,11 +68,22 @@ function executeBuy(
   token: Token,
   executionTime: number
 ): TradeResult {
-  // Validate sufficient balance
-  if (intent.amountBNB > state.bnbBalance) {
+  // Validate sufficient balance (with safety margin for fees)
+  const estimatedFee = intent.amountBNB * (SIM_CONFIG.TAKER_FEE_PCT / 100);
+  const totalRequired = intent.amountBNB + estimatedFee * 0.1; // Add 10% buffer on fee estimate
+
+  if (intent.amountBNB > state.bnbBalance || totalRequired > state.bnbBalance) {
     return {
       success: false,
       error: `Insufficient balance. Have ${state.bnbBalance.toFixed(4)}, need ${intent.amountBNB.toFixed(4)} BNB`,
+    };
+  }
+
+  // Additional safety: ensure minimum balance remains
+  if (state.bnbBalance - intent.amountBNB < 0) {
+    return {
+      success: false,
+      error: `Trade would result in negative balance`,
     };
   }
 
