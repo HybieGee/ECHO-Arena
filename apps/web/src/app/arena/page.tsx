@@ -64,6 +64,22 @@ export default function ArenaPage() {
       dataPoint[botKey] = parseFloat(bot.balance || 0);
     });
 
+    // If this is first load and history is empty, backfill with initial data
+    // This makes lines visible immediately instead of showing dots
+    if (historyRef.current.length === 0) {
+      const backfillPoints = [];
+      for (let i = 10; i >= 0; i--) {
+        const backfillTime = new Date(now.getTime() - i * 5000);
+        const backfillTimeStr = backfillTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const backfillPoint: any = { time: backfillTimeStr };
+        topBots.forEach((bot: any) => {
+          backfillPoint[`bot${bot.botId}`] = parseFloat(bot.balance || 0);
+        });
+        backfillPoints.push(backfillPoint);
+      }
+      historyRef.current = backfillPoints;
+    }
+
     // Add to history (keep last 60 data points = 5 minutes at 5s intervals)
     historyRef.current = [...historyRef.current, dataPoint].slice(-60);
     setBalanceHistory(historyRef.current);
