@@ -577,9 +577,8 @@ export class MatchCoordinator extends DurableObject {
       return { error: 'Bot not found in match' };
     }
 
-    // Get orders from storage
-    const orders = (await this.ctx.storage.get('orders')) || [];
-    const botOrders = orders.filter((o: any) => o.botId === botId);
+    // Get orders from botState (stored in memory, not DO storage)
+    const botOrders = botState.orders || [];
 
     // Get current universe for position valuation
     const universe = await this.fetchUniverse();
