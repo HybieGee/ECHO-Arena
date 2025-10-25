@@ -236,7 +236,7 @@ export class MatchCoordinator extends DurableObject {
       // Transform pools to Token format
       const tokens: Token[] = [];
 
-      for (const pool of Array.from(allPoolsMap.values()).slice(0, 50)) {
+      for (const pool of Array.from(allPoolsMap.values()).slice(0, 100)) {
         const attrs = pool.attributes;
 
         // Skip if missing critical data
@@ -256,20 +256,36 @@ export class MatchCoordinator extends DurableObject {
         // Extract token symbol from pool name (format: "TOKEN / BNB")
         const symbol = attrs.name.split(' / ')[0].substring(0, 20); // Limit symbol length
 
+        // Get token address to check if it's a four.meme token
+        const tokenAddress = pool.relationships?.base_token?.data?.id?.split('_')[1] || pool.id;
+        const isFourMeme = tokenAddress.toLowerCase().endsWith('4444');
+
         // Convert liquidity from USD to BNB
         const liquidityBNB = parseFloat(attrs.reserve_in_usd) / bnbPriceUSD;
 
-        // Skip if liquidity too low (require at least 10 BNB for stability)
-        if (liquidityBNB < 10) {
+        // Dynamic liquidity requirement based on age and platform
+        // Fresh tokens and four.meme tokens can have lower liquidity
+        const minLiquidity = (ageMins < 60 || isFourMeme) ? 5 : 10;
+        if (liquidityBNB < minLiquidity) {
           continue;
         }
 
         // Get 24h volume BEFORE price validation to filter early
         const volumeUSD24h = parseFloat(attrs.volume_usd?.h24 || '0');
 
-        // Skip if volume too low (require at least $2k daily volume)
-        if (volumeUSD24h < 2000) {
-          console.log(`⚠️ Rejecting ${symbol} - volume too low: $${volumeUSD24h.toFixed(0)}`);
+        // Dynamic volume requirement based on token age and platform
+        // Four.meme tokens and fresh launches get preferential treatment
+        let minVolume = 2000; // Default: $2k for established tokens
+        if (ageMins < 60) {
+          minVolume = 100; // < 1 hour: only $100 volume needed
+        } else if (ageMins < 360) {
+          minVolume = 500; // < 6 hours: $500 volume needed
+        } else if (isFourMeme) {
+          minVolume = 1000; // four.meme tokens: $1k volume needed
+        }
+
+        if (volumeUSD24h < minVolume) {
+          console.log(`⚠️ Rejecting ${symbol} (age: ${ageMins}m, 4meme: ${isFourMeme}) - volume too low: $${volumeUSD24h.toFixed(0)} (min: $${minVolume})`);
           continue;
         }
 
@@ -295,7 +311,7 @@ export class MatchCoordinator extends DurableObject {
         );
 
         tokens.push({
-          address: pool.relationships?.base_token?.data?.id?.split('_')[1] || pool.id,
+          address: tokenAddress,
           symbol,
           priceInBNB, // Use validated price
           liquidityBNB,
@@ -308,9 +324,19 @@ export class MatchCoordinator extends DurableObject {
           volumeUSD24h,
           priceChange24h,
         });
+
+        // Log four.meme tokens
+        if (isFourMeme) {
+          console.log(`✅ Added four.meme token: ${symbol} (age: ${ageMins}m, vol: $${volumeUSD24h.toFixed(0)})`);
+        }
       }
 
-      console.log(`Fetched ${tokens.length} tokens from BSC (new + trending)`);
+      // Log summary stats
+      const fourMemeCount = tokens.filter((t) => t.address.toLowerCase().endsWith('4444')).length;
+      const freshCount = tokens.filter((t) => t.ageMins < 360).length;
+      console.log(
+        `Fetched ${tokens.length} tokens from BSC (four.meme: ${fourMemeCount}, fresh <6h: ${freshCount})`
+      );
 
       // Return at least some tokens, fallback to mock if API fails
       if (tokens.length === 0) {

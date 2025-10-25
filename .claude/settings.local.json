@@ -32,7 +32,11 @@
       "Bash(timeout 30 npx wrangler tail:*)",
       "Bash(timeout 180 npx wrangler tail:*)",
       "Read(//c/Users/User/Desktop/Claude/**)",
-      "Bash(timeout 35 npx wrangler tail:*)"
+      "Bash(timeout 35 npx wrangler tail:*)",
+      "Bash(timeout 10 bash:*)",
+      "Bash(timeout 60 npx wrangler tail:*)",
+      "Bash(git restore:*)",
+      "WebFetch(domain:docs.bitquery.io)"
     ],
     "deny": [],
     "ask": []
