@@ -381,27 +381,20 @@ export class MatchCoordinator extends DurableObject {
    * Persist order to D1 database
    */
   private async persistOrder(order: any) {
-    // This would be called via the Worker env binding
-    // For now, just store in Durable Object storage
-    const orders = (await this.ctx.storage.get('orders')) || [];
-    orders.push(order);
-    await this.ctx.storage.put('orders', orders);
+    // CRITICAL FIX: Don't store in Durable Object - causes 128KB limit exceeded
+    // Orders and balances are tracked in botState and balanceHistory
+    // D1 persistence would happen via Worker env binding (not implemented yet)
+    // For now, skip storage to prevent unbounded array growth
   }
 
   /**
    * Persist balance snapshot to D1 database
    */
   private async persistBalance(botState: BotState, timestamp: number) {
-    const balances = (await this.ctx.storage.get('balances')) || [];
-    balances.push({
-      bot_id: botState.id,
-      ts: timestamp,
-      bnb_balance: botState.bnbBalance,
-      positions: JSON.stringify(botState.positions),
-      pnl_realized: botState.pnlRealized,
-      pnl_unrealized: botState.pnlUnrealized,
-    });
-    await this.ctx.storage.put('balances', balances);
+    // CRITICAL FIX: Don't store in Durable Object - causes 128KB limit exceeded
+    // Balance snapshots are already tracked in this.state.balanceHistory
+    // D1 persistence would happen via Worker env binding (not implemented yet)
+    // For now, skip storage to prevent unbounded array growth
   }
 
   /**
