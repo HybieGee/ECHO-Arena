@@ -185,7 +185,7 @@ export default function ArenaPage() {
                 <YAxis
                   stroke="#666"
                   tick={{ fill: '#888', fontSize: 11 }}
-                  domain={[0.8, 'auto']}
+                  domain={[0, 10]}
                   label={{
                     value: 'Balance (BNB)',
                     angle: -90,

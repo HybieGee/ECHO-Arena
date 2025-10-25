@@ -195,9 +195,10 @@ export class MatchCoordinator extends DurableObject {
       };
       this.state.balanceHistory.push(snapshot);
 
-      // Keep last 500 snapshots (approx 8-25 hours of history at 1-3 min intervals)
-      if (this.state.balanceHistory.length > 500) {
-        this.state.balanceHistory = this.state.balanceHistory.slice(-500);
+      // Keep last 30 snapshots (approx 30-90 minutes of history at 1-3 min intervals)
+      // Limit to prevent exceeding Durable Object 128KB storage limit
+      if (this.state.balanceHistory.length > 30) {
+        this.state.balanceHistory = this.state.balanceHistory.slice(-30);
       }
 
       this.state.lastTickTs = currentTime;
