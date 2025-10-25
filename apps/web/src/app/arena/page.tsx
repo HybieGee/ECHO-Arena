@@ -7,10 +7,25 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+// Color palette for bot lines
+const BOT_COLORS = [
+  '#00ffff', // neon-cyan
+  '#ff00ff', // echo-magenta
+  '#00ff00', // neon-green
+  '#ffff00', // yellow
+  '#ff0080', // pink
+  '#0080ff', // blue
+  '#ff8000', // orange
+  '#80ff00', // lime
+];
 
 export default function ArenaPage() {
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [balanceHistory, setBalanceHistory] = useState<any[]>([]);
+  const historyRef = useRef<any[]>([]);
 
   const { data: leaderboardData, isLoading } = useQuery({
     queryKey: ['leaderboard'],
@@ -26,11 +41,84 @@ export default function ArenaPage() {
 
   const leaderboard = leaderboardData?.leaderboard || [];
 
+  // Update balance history when new leaderboard data arrives
+  useEffect(() => {
+    if (!leaderboard || leaderboard.length === 0) return;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Create data point with all bot balances
+    const dataPoint: any = { time: timeStr };
+    leaderboard.forEach((bot: any, index: number) => {
+      const botKey = `bot${bot.botId}`;
+      dataPoint[botKey] = parseFloat(bot.balance || 0);
+    });
+
+    // Add to history (keep last 60 data points = 5 minutes at 5s intervals)
+    historyRef.current = [...historyRef.current, dataPoint].slice(-60);
+    setBalanceHistory(historyRef.current);
+  }, [leaderboard]);
+
   return (
     <div className="container-arena py-12">
       <h1 className="text-4xl font-bold mb-8 neon-text text-center">
         LIVE ARENA
       </h1>
+
+      {/* Live Balance Chart */}
+      {balanceHistory.length > 0 && leaderboard.length > 0 && (
+        <div className="card-arena p-6 mb-8">
+          <h2 className="text-2xl font-bold mb-4 text-echo-cyan">Live Bot Performance</h2>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={balanceHistory}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2e" />
+                <XAxis
+                  dataKey="time"
+                  stroke="#888"
+                  tick={{ fill: '#888', fontSize: 12 }}
+                  tickMargin={10}
+                />
+                <YAxis
+                  stroke="#888"
+                  tick={{ fill: '#888', fontSize: 12 }}
+                  domain={[0.5, 'auto']}
+                  label={{ value: 'Balance (BNB)', angle: -90, position: 'insideLeft', fill: '#888' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f0f1e',
+                    border: '1px solid #ff00ff40',
+                    borderRadius: '8px',
+                    color: '#fff',
+                  }}
+                  labelStyle={{ color: '#00ffff' }}
+                />
+                <Legend
+                  wrapperStyle={{ color: '#888' }}
+                  formatter={(value) => {
+                    const botId = value.replace('bot', '');
+                    const bot = leaderboard.find((b: any) => b.botId.toString() === botId);
+                    return bot?.botName || `Bot #${botId}`;
+                  }}
+                />
+                {leaderboard.map((bot: any, index: number) => (
+                  <Line
+                    key={`bot${bot.botId}`}
+                    type="monotone"
+                    dataKey={`bot${bot.botId}`}
+                    stroke={BOT_COLORS[index % BOT_COLORS.length]}
+                    strokeWidth={2}
+                    dot={false}
+                    animationDuration={300}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center text-gray-400">Loading leaderboard...</div>

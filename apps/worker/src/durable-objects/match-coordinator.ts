@@ -241,6 +241,17 @@ export class MatchCoordinator extends DurableObject {
           continue;
         }
 
+        // CRITICAL: Validate price to prevent unrealistic profits from bad data
+        const priceInBNB = parseFloat(attrs.base_token_price_native_currency);
+        if (!priceInBNB || priceInBNB <= 0) {
+          console.log(`⚠️ Rejecting ${symbol} - invalid price: ${priceInBNB}`);
+          continue;
+        }
+        if (priceInBNB < 0.000000001) {
+          console.log(`⚠️ Rejecting ${symbol} - price too low: ${priceInBNB}`);
+          continue;
+        }
+
         // Get 24h volume
         const volumeUSD24h = parseFloat(attrs.volume_usd?.h24 || '0');
 
@@ -257,7 +268,7 @@ export class MatchCoordinator extends DurableObject {
         tokens.push({
           address: pool.relationships?.base_token?.data?.id?.split('_')[1] || pool.id,
           symbol,
-          priceInBNB: parseFloat(attrs.base_token_price_native_currency),
+          priceInBNB, // Use validated price
           liquidityBNB,
           holders,
           ageMins,

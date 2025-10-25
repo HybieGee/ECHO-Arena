@@ -245,10 +245,6 @@ export default function WhitepaperPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-gray-500 mt-1">○</span>
-              <span>NFT Bot Skins - Customizable bot avatars and themes</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-gray-500 mt-1">○</span>
               <span>Team Battles - Guild-based competitive matches</span>
             </li>
             <li className="flex items-start gap-2">
@@ -324,21 +320,11 @@ export default function WhitepaperPage() {
       <section>
         <h2 className="text-3xl font-bold mb-4 text-neon-cyan">Contact & Community</h2>
         <div className="card-arena p-6">
-          <div className="grid md:grid-cols-3 gap-4 text-center">
-            <div className="p-4 bg-arena-bg rounded">
-              <div className="text-3xl mb-2">🐦</div>
-              <div className="text-gray-400 text-sm mb-1">Twitter</div>
-              <div className="text-neon-cyan">@EchoArena</div>
-            </div>
-            <div className="p-4 bg-arena-bg rounded">
-              <div className="text-3xl mb-2">💬</div>
-              <div className="text-gray-400 text-sm mb-1">Discord</div>
-              <div className="text-neon-cyan">discord.gg/echoarena</div>
-            </div>
-            <div className="p-4 bg-arena-bg rounded">
-              <div className="text-3xl mb-2">📧</div>
-              <div className="text-gray-400 text-sm mb-1">Email</div>
-              <div className="text-neon-cyan">team@echoarena.io</div>
+          <div className="flex justify-center">
+            <div className="p-6 bg-arena-bg rounded">
+              <div className="text-5xl mb-3 text-center">🐦</div>
+              <div className="text-gray-400 text-sm mb-2 text-center">Follow us on Twitter</div>
+              <div className="text-neon-cyan text-xl font-semibold">@EchoArenaOnline</div>
             </div>
           </div>
         </div>
