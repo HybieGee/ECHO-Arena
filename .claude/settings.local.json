@@ -31,7 +31,8 @@
       "WebFetch(domain:api.geckoterminal.com)",
       "Bash(timeout 30 npx wrangler tail:*)",
       "Bash(timeout 180 npx wrangler tail:*)",
-      "Read(//c/Users/User/Desktop/Claude/**)"
+      "Read(//c/Users/User/Desktop/Claude/**)",
+      "Bash(timeout 35 npx wrangler tail:*)"
     ],
     "deny": [],
     "ask": []

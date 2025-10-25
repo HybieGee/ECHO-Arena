@@ -66,15 +66,36 @@ const botStrategies = [
 console.log('-- UPDATE statements to add proper DSL to all 50 test bots\n');
 
 botStrategies.forEach(bot => {
+  // Determine signal type based on bot ID
+  let signal = "momentum";
+  let threshold = bot.threshold;
+  let ageMax = bot.age || 1440;
+
+  if (bot.id >= 17 && bot.id <= 26) {
+    // Volume spike traders (bots 17-26)
+    signal = "volumeSpike";
+    threshold = 2.0; // Volume/liquidity ratio threshold
+  } else if (bot.id >= 27 && bot.id <= 36) {
+    // New launch specialists (bots 27-36)
+    signal = "newLaunch";
+    threshold = 7.0; // Higher = only newer tokens (score is age-based)
+    ageMax = bot.age; // Use their specific age limits (5-60 mins)
+  } else if (bot.id >= 37 && bot.id <= 46) {
+    // Social buzz traders (bots 37-46)
+    signal = "socialBuzz";
+    threshold = 2.5; // Log10(holders) threshold
+  }
+  // Bots 7-16 and 47-56 keep momentum signal
+
   const dsl = {
     universe: {
-      ageMinutesMax: bot.age || 1440, // Default 24h, or custom for launch specialists
+      ageMinutesMax: ageMax,
       minLiquidityBNB: 10,
       minHolders: 50
     },
     entry: {
-      signal: "momentum",
-      threshold: bot.threshold,
+      signal: signal,
+      threshold: threshold,
       maxPositions: bot.maxPos,
       allocationPerPositionBNB: bot.allocation
     },
