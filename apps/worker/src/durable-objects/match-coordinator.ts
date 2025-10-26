@@ -12,6 +12,7 @@ import {
   updateUnrealizedPnL,
   calculateTotalValue,
   calculateGainPercent,
+  calculatePrize,
   evaluateStrategy,
   sortBotsDeterministically,
   type BotState,
@@ -399,9 +400,12 @@ export class MatchCoordinator extends DurableObject {
 
   /**
    * Settle match at end
+   * Updates D1 database with winners and final match status
    */
   private async settleMatch() {
     if (!this.state) return;
+
+    console.log(`Settling match ${this.state.matchId}...`);
 
     this.state.isRunning = false;
 
@@ -435,10 +439,50 @@ export class MatchCoordinator extends DurableObject {
     // Sort by final balance (descending)
     results.sort((a, b) => b.final_balance - a.final_balance);
 
+    // Store locally in DO
     await this.ctx.storage.put('finalResults', results);
     await this.ctx.storage.put('matchState', this.state);
 
-    console.log(`Match ${this.state.matchId} settled. Winner: ${results[0]?.owner_address}`);
+    try {
+      // CRITICAL: Update D1 database with winners
+      for (const [index, result] of results.entries()) {
+        const prizeAmount = index === 0 ? calculatePrize(result.gain_pct) : 0;
+
+        await (this.env as any).DB.prepare(
+          'INSERT INTO winners (match_id, bot_id, owner_address, start_balance, end_balance, pct_gain, prize_bnb) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        )
+          .bind(
+            this.state.matchId,
+            result.bot_id,
+            result.owner_address,
+            1.0,
+            result.final_balance,
+            result.gain_pct,
+            prizeAmount
+          )
+          .run();
+      }
+
+      // Generate result hash (SHA-256 of results JSON)
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify(results));
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const resultHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // Store result hash in KV
+      await (this.env as any).RESULTS.put(`match-${this.state.matchId}`, JSON.stringify(results));
+
+      // Update match status to 'settled' in D1
+      await (this.env as any).DB.prepare('UPDATE matches SET status = ?, result_hash = ? WHERE id = ?')
+        .bind('settled', resultHash, this.state.matchId)
+        .run();
+
+      console.log(`Match ${this.state.matchId} settled successfully. Winner: ${results[0]?.owner_address} with ${results[0]?.final_balance.toFixed(4)} BNB (+${results[0]?.gain_pct.toFixed(2)}%)`);
+    } catch (error) {
+      console.error(`Error updating D1 during settlement for match ${this.state.matchId}:`, error);
+      throw error;
+    }
   }
 
   /**

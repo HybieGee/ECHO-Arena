@@ -39,7 +39,8 @@
       "WebFetch(domain:docs.bitquery.io)",
       "Bash(timeout 300 npx wrangler tail:*)",
       "Bash(tee:*)",
-      "Bash(timeout 120 npx wrangler tail:*)"
+      "Bash(timeout 120 npx wrangler tail:*)",
+      "Bash(timeout 10 npx wrangler tail:*)"
     ],
     "deny": [],
     "ask": []
