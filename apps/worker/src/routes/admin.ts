@@ -42,6 +42,19 @@ adminRoutes.post('/match/create', async (c) => {
   try {
     const { startTs, durationHours = 24 } = await c.req.json();
 
+    // CRITICAL: Check for existing active matches
+    const activeMatch = await c.env.DB.prepare(
+      "SELECT id, status FROM matches WHERE status IN ('pending', 'running') LIMIT 1"
+    ).first();
+
+    if (activeMatch) {
+      return c.json({
+        error: `Cannot create new match. Match ${activeMatch.id} is already ${activeMatch.status}. Please settle it first.`,
+        existingMatchId: activeMatch.id,
+        existingMatchStatus: activeMatch.status,
+      }, 409);
+    }
+
     const start = startTs || Math.floor(Date.now() / 1000);
     const end = start + durationHours * 3600;
 
@@ -141,6 +154,20 @@ adminRoutes.post('/match/:id/start', async (c) => {
 
     if (!match) {
       return c.json({ error: 'Match not found' }, 404);
+    }
+
+    // CRITICAL: Check for existing running matches (excluding this one)
+    const runningMatch = await c.env.DB.prepare(
+      "SELECT id FROM matches WHERE status = 'running' AND id != ? LIMIT 1"
+    )
+      .bind(matchId)
+      .first();
+
+    if (runningMatch) {
+      return c.json({
+        error: `Cannot start match ${matchId}. Match ${runningMatch.id} is already running. Please settle it first.`,
+        runningMatchId: runningMatch.id,
+      }, 409);
     }
 
     // Update status to running
