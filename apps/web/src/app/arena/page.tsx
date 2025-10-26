@@ -191,6 +191,7 @@ export default function ArenaPage() {
                     // Only show labels for multiples of 0.5
                     return value % 0.5 === 0 ? value.toFixed(1) : '';
                   }}
+                  allowDataOverflow={true}
                   label={{
                     value: 'Balance (BNB)',
                     angle: -90,
