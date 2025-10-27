@@ -9,7 +9,7 @@
 
 ### Cloudflare Deployment
 - **Pages Project Name:** `echo-arena2` (NOT echo-arena!)
-- **Current Frontend URL:** https://bb339e8b.echo-arena2.pages.dev (deployed Oct 27, 2025)
+- **Current Frontend URL:** https://91180a60.echo-arena2.pages.dev (deployed Oct 27, 2025 - commit b5aa085)
 - Pages Dashboard: https://dash.cloudflare.com/7d721b5c1782592e2cd183ecd6793641/pages/view/echo-arena2
 - **Worker Name:** `echo-arena-worker`
 - Worker URL: https://echo-arena-worker.stealthbundlebot.workers.dev
