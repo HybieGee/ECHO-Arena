@@ -31,6 +31,7 @@ export interface Order {
   botId: number;
   ts: number;
   symbol: string;
+  tokenAddress: string;
   side: 'buy' | 'sell';
   qty: number;
   fillPrice: number;

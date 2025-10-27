@@ -473,6 +473,7 @@ export default function ArenaPage() {
                       <tr className="border-b border-arena-border">
                         <th className="text-left py-2 px-2">Time</th>
                         <th className="text-left py-2 px-2">Symbol</th>
+                        <th className="text-left py-2 px-2">Contract</th>
                         <th className="text-left py-2 px-2">Side</th>
                         <th className="text-right py-2 px-2">Qty</th>
                         <th className="text-right py-2 px-2">Fill Price</th>
@@ -486,6 +487,21 @@ export default function ArenaPage() {
                             {new Date(order.ts).toLocaleTimeString()}
                           </td>
                           <td className="py-2 px-2 font-mono text-neon-cyan">{order.symbol}</td>
+                          <td className="py-2 px-2">
+                            {order.tokenAddress ? (
+                              <a
+                                href={`https://bscscan.com/token/${order.tokenAddress}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs font-mono text-echo-cyan hover:text-neon-cyan underline"
+                                title={`View ${order.symbol} on BSCScan`}
+                              >
+                                {order.tokenAddress.slice(0, 6)}...{order.tokenAddress.slice(-4)}
+                              </a>
+                            ) : (
+                              <span className="text-xs text-gray-500">-</span>
+                            )}
+                          </td>
                           <td
                             className={`py-2 px-2 font-semibold ${
                               order.side === 'buy' ? 'text-neon-green' : 'text-neon-red'

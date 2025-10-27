@@ -269,6 +269,11 @@ export class MatchCoordinator extends DurableObject {
         const tokenAddress = pool.relationships?.base_token?.data?.id?.split('_')[1] || pool.id;
         const isFourMeme = tokenAddress.toLowerCase().endsWith('4444');
 
+        // IMPORTANT: Only trade four.meme tokens (address ends with 4444)
+        if (!isFourMeme) {
+          continue;
+        }
+
         // Convert liquidity from USD to BNB
         const liquidityBNB = parseFloat(attrs.reserve_in_usd) / bnbPriceUSD;
 
