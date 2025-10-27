@@ -219,12 +219,12 @@ export class MatchCoordinator extends DurableObject {
   }
 
   /**
-   * Fetch token universe from GeckoTerminal API
-   * Gets new and trending BSC tokens from four.meme and other DEXes
+   * Fetch token universe from DexScreener API
+   * Gets BSC four.meme tokens with real-time pricing
    */
   private async fetchUniverse(): Promise<Token[]> {
     try {
-      // Fetch both new and trending pools from BSC
+      // First, discover four.meme tokens from GeckoTerminal (for token discovery)
       const [newPoolsResponse, trendingPoolsResponse] = await Promise.all([
         fetch('https://api.geckoterminal.com/api/v2/networks/bsc/new_pools?page=1'),
         fetch('https://api.geckoterminal.com/api/v2/networks/bsc/trending_pools?page=1'),
@@ -233,117 +233,131 @@ export class MatchCoordinator extends DurableObject {
       const newPools = await newPoolsResponse.json();
       const trendingPools = await trendingPoolsResponse.json();
 
-      // Combine and deduplicate pools
-      const allPoolsMap = new Map();
+      // Collect unique four.meme token addresses
+      const fourMemeAddresses = new Set<string>();
+      const tokenMetadata = new Map<string, any>();
 
       [...(newPools.data || []), ...(trendingPools.data || [])].forEach((pool: any) => {
-        allPoolsMap.set(pool.id, pool);
+        const attrs = pool.attributes;
+        const tokenAddress = pool.relationships?.base_token?.data?.id?.split('_')[1];
+
+        if (tokenAddress && tokenAddress.toLowerCase().endsWith('4444')) {
+          fourMemeAddresses.add(tokenAddress);
+          // Store metadata for later use
+          tokenMetadata.set(tokenAddress, {
+            symbol: attrs.name?.split(' / ')[0]?.substring(0, 20) || 'UNKNOWN',
+            createdAt: attrs.pool_created_at,
+            volumeUSD24h: parseFloat(attrs.volume_usd?.h24 || '0'),
+            reserveUSD: parseFloat(attrs.reserve_in_usd || '0'),
+            txData: attrs.transactions?.h24 || {},
+          });
+        }
       });
 
-      // Get BNB price in USD for conversion
-      const bnbPriceUSD = 600; // Approximate BNB price, could fetch live
+      console.log(`Found ${fourMemeAddresses.size} four.meme tokens from GeckoTerminal`);
 
-      // Transform pools to Token format
+      // Get BNB price in USD for conversion
+      const bnbPriceUSD = 600; // Approximate BNB price
+
+      // Transform to Token format with DexScreener prices
       const tokens: Token[] = [];
 
-      for (const pool of Array.from(allPoolsMap.values()).slice(0, 100)) {
-        const attrs = pool.attributes;
+      // Batch query DexScreener for accurate prices (max 30 addresses per request)
+      const addressArray = Array.from(fourMemeAddresses).slice(0, 30);
 
-        // Skip if missing critical data
-        if (!attrs.base_token_price_native_currency || !attrs.reserve_in_usd) {
-          continue;
-        }
+      if (addressArray.length > 0) {
+        const dexScreenerUrl = `https://api.dexscreener.com/latest/dex/tokens/${addressArray.join(',')}`;
+        console.log(`Fetching prices from DexScreener for ${addressArray.length} tokens...`);
 
-        // Calculate age in minutes
-        const createdAt = new Date(attrs.pool_created_at).getTime();
-        const ageMins = Math.floor((Date.now() - createdAt) / 1000 / 60);
+        const dexResponse = await fetch(dexScreenerUrl);
+        const dexData = await dexResponse.json();
 
-        // Skip tokens older than 1 week (10080 mins)
-        if (ageMins > 10080) {
-          continue;
-        }
+        // Process each pair from DexScreener
+        const pairs = dexData.pairs || [];
 
-        // Extract token symbol from pool name (format: "TOKEN / BNB")
-        const symbol = attrs.name.split(' / ')[0].substring(0, 20); // Limit symbol length
+        for (const pair of pairs) {
+          const tokenAddress = pair.baseToken?.address;
+          if (!tokenAddress || !tokenAddress.toLowerCase().endsWith('4444')) {
+            continue;
+          }
 
-        // Get token address to check if it's a four.meme token
-        const tokenAddress = pool.relationships?.base_token?.data?.id?.split('_')[1] || pool.id;
-        const isFourMeme = tokenAddress.toLowerCase().endsWith('4444');
+          const metadata = tokenMetadata.get(tokenAddress);
+          if (!metadata) {
+            continue;
+          }
 
-        // IMPORTANT: Only trade four.meme tokens (address ends with 4444)
-        if (!isFourMeme) {
-          continue;
-        }
+          // Calculate age in minutes
+          const createdAt = metadata.createdAt ? new Date(metadata.createdAt).getTime() : Date.now();
+          const ageMins = Math.floor((Date.now() - createdAt) / 1000 / 60);
 
-        // Convert liquidity from USD to BNB
-        const liquidityBNB = parseFloat(attrs.reserve_in_usd) / bnbPriceUSD;
+          // Skip tokens older than 1 week (10080 mins)
+          if (ageMins > 10080) {
+            continue;
+          }
 
-        // Dynamic liquidity requirement based on age and platform
-        // Fresh tokens and four.meme tokens can have lower liquidity
-        const minLiquidity = (ageMins < 60 || isFourMeme) ? 5 : 10;
-        if (liquidityBNB < minLiquidity) {
-          continue;
-        }
+          // Get DexScreener price data (more accurate than GeckoTerminal)
+          const priceInBNB = parseFloat(pair.priceNative || '0');
+          const priceUSD = parseFloat(pair.priceUsd || '0');
+          const liquidityUSD = parseFloat(pair.liquidity?.usd || '0');
+          const liquidityBNB = liquidityUSD / bnbPriceUSD;
+          const volumeUSD24h = parseFloat(pair.volume?.h24 || '0');
 
-        // Get 24h volume BEFORE price validation to filter early
-        const volumeUSD24h = parseFloat(attrs.volume_usd?.h24 || '0');
+          // Dynamic liquidity requirement
+          const minLiquidity = ageMins < 60 ? 5 : 10;
+          if (liquidityBNB < minLiquidity) {
+            continue;
+          }
 
-        // Dynamic volume requirement based on token age and platform
-        // Four.meme tokens and fresh launches get preferential treatment
-        let minVolume = 2000; // Default: $2k for established tokens
-        if (ageMins < 60) {
-          minVolume = 100; // < 1 hour: only $100 volume needed
-        } else if (ageMins < 360) {
-          minVolume = 500; // < 6 hours: $500 volume needed
-        } else if (isFourMeme) {
-          minVolume = 1000; // four.meme tokens: $1k volume needed
-        }
+          // Dynamic volume requirement
+          let minVolume = 2000;
+          if (ageMins < 60) {
+            minVolume = 100;
+          } else if (ageMins < 360) {
+            minVolume = 500;
+          } else {
+            minVolume = 1000;
+          }
 
-        if (volumeUSD24h < minVolume) {
-          console.log(`⚠️ Rejecting ${symbol} (age: ${ageMins}m, 4meme: ${isFourMeme}) - volume too low: $${volumeUSD24h.toFixed(0)} (min: $${minVolume})`);
-          continue;
-        }
+          if (volumeUSD24h < minVolume) {
+            console.log(`⚠️ Rejecting ${pair.baseToken.symbol} (age: ${ageMins}m) - volume too low: $${volumeUSD24h.toFixed(0)} (min: $${minVolume})`);
+            continue;
+          }
 
-        // CRITICAL: Validate price to prevent unrealistic profits from bad data
-        const priceInBNB = parseFloat(attrs.base_token_price_native_currency);
-        if (!priceInBNB || priceInBNB <= 0) {
-          console.log(`⚠️ Rejecting ${symbol} - invalid price: ${priceInBNB}`);
-          continue;
-        }
-        if (priceInBNB < 0.000000001) {
-          console.log(`⚠️ Rejecting ${symbol} - price too low: ${priceInBNB}`);
-          continue;
-        }
+          // Validate price
+          if (!priceInBNB || priceInBNB <= 0) {
+            console.log(`⚠️ Rejecting ${pair.baseToken.symbol} - invalid price: ${priceInBNB}`);
+            continue;
+          }
+          if (priceInBNB < 0.000000001) {
+            console.log(`⚠️ Rejecting ${pair.baseToken.symbol} - price too low: ${priceInBNB}`);
+            continue;
+          }
 
-        // Get price change percentage
-        const priceChange24h = parseFloat(attrs.price_change_percentage?.h24 || '0');
+          // Get price change and transaction data
+          const priceChange24h = parseFloat(pair.priceChange?.h24 || '0');
+          const txData = pair.txns?.h24 || {};
+          const holders = Math.max(
+            (txData.buys || 0) + (txData.sells || 0),
+            50
+          );
 
-        // Estimate holder count based on transaction activity
-        const txData = attrs.transactions?.h24 || {};
-        const holders = Math.max(
-          (txData.buyers || 0) + (txData.sellers || 0),
-          50 // Minimum estimate
-        );
+          tokens.push({
+            address: tokenAddress,
+            symbol: pair.baseToken.symbol?.substring(0, 20) || metadata.symbol,
+            priceInBNB,
+            liquidityBNB,
+            holders,
+            ageMins,
+            taxPct: 0,
+            isHoneypot: false,
+            ownerRenounced: false,
+            lpLocked: true,
+            volumeUSD24h,
+            priceChange24h,
+          });
 
-        tokens.push({
-          address: tokenAddress,
-          symbol,
-          priceInBNB, // Use validated price
-          liquidityBNB,
-          holders,
-          ageMins,
-          taxPct: 0, // GeckoTerminal doesn't provide tax info, assume 0
-          isHoneypot: false, // Assume verified pools on GeckoTerminal are safe
-          ownerRenounced: false, // Unknown, assume false for safety
-          lpLocked: true, // Assume true for pools on GeckoTerminal
-          volumeUSD24h,
-          priceChange24h,
-        });
-
-        // Log four.meme tokens with price details
-        if (isFourMeme) {
-          const priceUSD = priceInBNB * 600; // Approximate USD price
-          console.log(`✅ Added four.meme token: ${symbol} | Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | Age: ${ageMins}m | Vol: $${volumeUSD24h.toFixed(0)} | Liq: ${liquidityBNB.toFixed(2)} BNB | CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)}`);
+          // Log with DexScreener prices
+          console.log(`✅ Added four.meme token: ${pair.baseToken.symbol} | Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | Age: ${ageMins}m | Vol: $${volumeUSD24h.toFixed(0)} | Liq: ${liquidityBNB.toFixed(2)} BNB | CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)} | Source: DexScreener`);
         }
       }
 
@@ -351,18 +365,18 @@ export class MatchCoordinator extends DurableObject {
       const fourMemeCount = tokens.filter((t) => t.address.toLowerCase().endsWith('4444')).length;
       const freshCount = tokens.filter((t) => t.ageMins < 360).length;
       console.log(
-        `Fetched ${tokens.length} tokens from BSC (four.meme: ${fourMemeCount}, fresh <6h: ${freshCount})`
+        `Fetched ${tokens.length} tokens from DexScreener (four.meme: ${fourMemeCount}, fresh <6h: ${freshCount})`
       );
 
       // Return at least some tokens, fallback to mock if API fails
       if (tokens.length === 0) {
-        console.warn('No tokens fetched from GeckoTerminal, using fallback token');
+        console.warn('No tokens fetched from DexScreener, using fallback token');
         return this.getFallbackTokens();
       }
 
       return tokens;
     } catch (error) {
-      console.error('Error fetching universe from GeckoTerminal:', error);
+      console.error('Error fetching universe from DexScreener:', error);
       return this.getFallbackTokens();
     }
   }
