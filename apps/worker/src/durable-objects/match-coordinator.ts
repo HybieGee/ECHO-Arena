@@ -161,21 +161,22 @@ export class MatchCoordinator extends DurableObject {
 
         // Execute each trade intent
         for (const intent of intents) {
-          console.log(`Bot ${bot.id}: Executing ${intent.side} ${intent.symbol} for ${intent.amountBNB} BNB`);
           const token = universe.find(t => t.symbol === intent.symbol);
           if (!token) {
             console.error(`Token ${intent.symbol} not found in universe`);
             continue;
           }
 
+          console.log(`Bot ${bot.id}: Executing ${intent.side.toUpperCase()} ${intent.symbol} (${token.address.slice(0, 8)}...${token.address.slice(-6)}) | Amount: ${intent.amountBNB.toFixed(4)} BNB | Price: ${token.priceInBNB.toFixed(10)} BNB`);
+
           const result = executeTrade(botState, intent, token, currentTime);
 
           if (result.success && result.order) {
-            console.log(`Bot ${bot.id}: Trade successful! Order ID ${result.order.id}`);
+            console.log(`Bot ${bot.id}: ✅ Trade successful! ${intent.side.toUpperCase()} ${result.order.qty.toFixed(4)} ${intent.symbol} @ ${result.order.fillPrice.toFixed(10)} BNB | Fee: ${result.order.fee.toFixed(6)} BNB`);
             // Persist order to storage
             await this.persistOrder(result.order);
           } else {
-            console.error(`Bot ${bot.id}: Trade failed - ${result.error}`);
+            console.error(`Bot ${bot.id}: ❌ Trade failed - ${result.error}`);
           }
         }
 
@@ -339,9 +340,10 @@ export class MatchCoordinator extends DurableObject {
           priceChange24h,
         });
 
-        // Log four.meme tokens
+        // Log four.meme tokens with price details
         if (isFourMeme) {
-          console.log(`✅ Added four.meme token: ${symbol} (age: ${ageMins}m, vol: $${volumeUSD24h.toFixed(0)})`);
+          const priceUSD = priceInBNB * 600; // Approximate USD price
+          console.log(`✅ Added four.meme token: ${symbol} | Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | Age: ${ageMins}m | Vol: $${volumeUSD24h.toFixed(0)} | Liq: ${liquidityBNB.toFixed(2)} BNB | CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)}`);
         }
       }
 
