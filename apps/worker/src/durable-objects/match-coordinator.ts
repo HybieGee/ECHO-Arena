@@ -262,29 +262,36 @@ export class MatchCoordinator extends DurableObject {
       // Transform to Token format with DexScreener prices
       const tokens: Token[] = [];
 
-      // Batch query DexScreener for accurate prices (max 30 addresses per request)
-      const addressArray = Array.from(fourMemeAddresses).slice(0, 30);
+      // Query DexScreener using search endpoint (supports four.meme tokens)
+      const addressArray = Array.from(fourMemeAddresses).slice(0, 20);
 
       if (addressArray.length > 0) {
-        const dexScreenerUrl = `https://api.dexscreener.com/latest/dex/tokens/${addressArray.join(',')}`;
         console.log(`Fetching prices from DexScreener for ${addressArray.length} tokens...`);
 
-        const dexResponse = await fetch(dexScreenerUrl);
-        const dexData = await dexResponse.json();
+        // Query each token individually using search endpoint
+        // Rate limit: 300 req/min, so 20 tokens = well within limits
+        for (const tokenAddress of addressArray) {
+          try {
+            const searchUrl = `https://api.dexscreener.com/latest/dex/search?q=${tokenAddress}`;
+            const searchResponse = await fetch(searchUrl);
+            const searchData = await searchResponse.json();
 
-        // Process each pair from DexScreener
-        const pairs = dexData.pairs || [];
+            // Get the first BSC pair for this token
+            const pair = (searchData.pairs || []).find(
+              (p: any) =>
+                p.chainId === 'bsc' &&
+                p.baseToken?.address?.toLowerCase() === tokenAddress.toLowerCase()
+            );
 
-        for (const pair of pairs) {
-          const tokenAddress = pair.baseToken?.address;
-          if (!tokenAddress || !tokenAddress.toLowerCase().endsWith('4444')) {
-            continue;
-          }
+            if (!pair) {
+              console.log(`⚠️ No DexScreener data for ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)}`);
+              continue;
+            }
 
-          const metadata = tokenMetadata.get(tokenAddress);
-          if (!metadata) {
-            continue;
-          }
+            const metadata = tokenMetadata.get(tokenAddress);
+            if (!metadata) {
+              continue;
+            }
 
           // Calculate age in minutes
           const createdAt = metadata.createdAt ? new Date(metadata.createdAt).getTime() : Date.now();
@@ -358,6 +365,9 @@ export class MatchCoordinator extends DurableObject {
 
           // Log with DexScreener prices
           console.log(`✅ Added four.meme token: ${pair.baseToken.symbol} | Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | Age: ${ageMins}m | Vol: $${volumeUSD24h.toFixed(0)} | Liq: ${liquidityBNB.toFixed(2)} BNB | CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)} | Source: DexScreener`);
+          } catch (error) {
+            console.error(`Error fetching price for ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)}:`, error);
+          }
         }
       }
 
