@@ -230,31 +230,39 @@ export class MatchCoordinator extends DurableObject {
       // Get BNB price in USD for conversion
       const bnbPriceUSD = 600; // Approximate BNB price
 
-      // GraphQL query for four.meme tokens
+      // GraphQL query for four.meme tokens using Bitquery V2 API
       const query = `
         query GetFourMemeTokens($timeAgo: DateTime) {
-          EVM(network: bsc) {
-            DEXTradeByTokens(
+          Trading {
+            Pairs(
               where: {
-                Trade: {
-                  Dex: {ProtocolName: {is: "fourmeme_v1"}},
-                  Success: true
-                },
                 Block: {Time: {since: $timeAgo}}
+                Price: {IsQuotedInUsd: true}
+                Market: {
+                  Protocol: {is: "fourmeme_v1"}
+                  Network: {is: "Binance Smart Chain"}
+                }
+                Volume: {Usd: {gt: 50}}
               }
-              orderBy: {descending: volume}
-              limit: {count: 30}
+              limit: {count: 100}
+              orderBy: {descending: Volume_Usd}
             ) {
-              Trade {
-                Currency {
-                  Name
-                  Symbol
-                  SmartContract
+              Token {
+                Name
+                Symbol
+                Address
+              }
+              Volume {
+                Usd
+              }
+              Price {
+                Average {
+                  Mean
                 }
               }
-              latest_price: maximum(of: Trade_PriceInUSD)
-              volume: sum(of: Trade_Side_AmountInUSD)
-              trades: count
+              Block {
+                Time
+              }
             }
           }
         }
@@ -277,37 +285,46 @@ export class MatchCoordinator extends DurableObject {
 
       const result = await response.json();
 
-      if (!result.data || !result.data.EVM || !result.data.EVM.DEXTradeByTokens) {
-        console.error('Invalid Bitquery response:', result);
+      if (!result.data || !result.data.Trading || !result.data.Trading.Pairs) {
+        console.error('Invalid Bitquery response:', JSON.stringify(result, null, 2));
         throw new Error('Invalid response from Bitquery API');
       }
 
-      const tokenData = result.data.EVM.DEXTradeByTokens;
-      console.log(`Received ${tokenData.length} tokens from Bitquery`);
+      const pairsData = result.data.Trading.Pairs;
+      console.log(`Received ${pairsData.length} pair entries from Bitquery`);
 
-      // Transform to Token format
-      const tokens: Token[] = [];
+      // Group by token address to get unique tokens with latest data
+      const tokenMap = new Map<string, any>();
 
-      for (const item of tokenData) {
-        const currency = item.Trade?.Currency;
-        if (!currency || !currency.SmartContract) {
-          continue;
-        }
-
-        const tokenAddress = currency.SmartContract;
+      for (const pair of pairsData) {
+        const tokenAddress = pair.Token?.Address;
+        if (!tokenAddress) continue;
 
         // Verify it's a four.meme token (ends in 4444)
         if (!tokenAddress.toLowerCase().endsWith('4444')) {
           continue;
         }
 
-        const priceUSD = parseFloat(item.latest_price || '0');
-        const volumeUSD = parseFloat(item.volume || '0');
-        const tradeCount = parseInt(item.trades || '0');
+        // Keep the latest entry for each token (they're already sorted by volume desc)
+        if (!tokenMap.has(tokenAddress)) {
+          tokenMap.set(tokenAddress, pair);
+        }
+      }
+
+      console.log(`Found ${tokenMap.size} unique four.meme tokens`);
+
+      // Transform to Token format
+      const tokens: Token[] = [];
+
+      for (const [tokenAddress, pair] of tokenMap.entries()) {
+        const priceUSD = parseFloat(pair.Price?.Average?.Mean || '0');
+        const volumeUSD = parseFloat(pair.Volume?.Usd || '0');
+        const symbol = pair.Token?.Symbol || pair.Token?.Name || 'UNKNOWN';
+        const name = pair.Token?.Name || symbol;
 
         // Skip tokens with no price data
         if (!priceUSD || priceUSD <= 0) {
-          console.log(`⚠️ Skipping ${currency.Symbol} - no price data`);
+          console.log(`⚠️ Skipping ${symbol} - no price data`);
           continue;
         }
 
@@ -316,31 +333,28 @@ export class MatchCoordinator extends DurableObject {
 
         // Validate price is reasonable
         if (priceInBNB < 0.000000001) {
-          console.log(`⚠️ Skipping ${currency.Symbol} - price too low: ${priceInBNB}`);
+          console.log(`⚠️ Skipping ${symbol} - price too low: ${priceInBNB}`);
           continue;
         }
 
         // Estimate liquidity from volume (rough approximation)
-        // Higher volume tokens typically have more liquidity
         const estimatedLiquidityBNB = Math.max(volumeUSD / bnbPriceUSD / 10, 5);
 
-        // Minimum volume filter
+        // Minimum volume filter (already filtered in query at $50)
         const minVolume = 50; // $50 in last 15 minutes
         if (volumeUSD < minVolume) {
-          console.log(`⚠️ Skipping ${currency.Symbol} - volume too low: $${volumeUSD.toFixed(2)} (min: $${minVolume})`);
+          console.log(`⚠️ Skipping ${symbol} - volume too low: $${volumeUSD.toFixed(2)} (min: $${minVolume})`);
           continue;
         }
 
-        // Use trade count as proxy for holders (rough estimate)
-        const holders = Math.max(tradeCount * 2, 50);
-
-        // Estimate age based on activity (tokens with high trade count are likely newer/more active)
-        // This is a rough approximation since Bitquery doesn't give us creation time directly
-        const ageMins = tradeCount > 100 ? 60 : tradeCount > 50 ? 180 : 360;
+        // Estimate holders and age based on volume
+        // Higher volume tokens likely have more participants
+        const holders = Math.max(Math.floor(volumeUSD / 10), 50);
+        const ageMins = volumeUSD > 10000 ? 60 : volumeUSD > 1000 ? 180 : 360;
 
         tokens.push({
           address: tokenAddress,
-          symbol: (currency.Symbol || currency.Name || 'UNKNOWN').substring(0, 20),
+          symbol: symbol.substring(0, 20),
           priceInBNB,
           liquidityBNB: estimatedLiquidityBNB,
           holders,
@@ -350,14 +364,13 @@ export class MatchCoordinator extends DurableObject {
           ownerRenounced: false,
           lpLocked: true,
           volumeUSD24h: volumeUSD * 96, // Extrapolate 15min volume to 24h
-          priceChange24h: 0, // Not available from this query
+          priceChange24h: 0,
         });
 
         console.log(
-          `✅ Added four.meme token: ${currency.Symbol} | ` +
+          `✅ Added four.meme token: ${symbol} | ` +
           `Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | ` +
           `Vol (15m): $${volumeUSD.toFixed(0)} | ` +
-          `Trades: ${tradeCount} | ` +
           `CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)} | ` +
           `Source: Bitquery`
         );
@@ -377,7 +390,7 @@ export class MatchCoordinator extends DurableObject {
 
       return tokens;
     } catch (error) {
-      console.error('Error fetching universe from DexScreener:', error);
+      console.error('Error fetching universe from Bitquery:', error);
       return this.getFallbackTokens();
     }
   }
