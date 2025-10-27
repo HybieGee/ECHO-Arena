@@ -196,11 +196,18 @@ export class MatchCoordinator extends DurableObject {
       };
       this.state.balanceHistory.push(snapshot);
 
-      // Keep last 10 snapshots (approx 10-30 minutes of history at 1-3 min intervals)
-      // CRITICAL: Limit to prevent exceeding Durable Object 128KB storage limit
-      // With 51 bots and 23+ tokens, even 30 snapshots was too large
-      if (this.state.balanceHistory.length > 10) {
-        this.state.balanceHistory = this.state.balanceHistory.slice(-10);
+      // Keep last 5 snapshots (approx 5-15 minutes of history at 1-3 min intervals)
+      // CRITICAL: Reduced from 10 to 5 to prevent exceeding Durable Object 128KB storage limit
+      if (this.state.balanceHistory.length > 5) {
+        this.state.balanceHistory = this.state.balanceHistory.slice(-5);
+      }
+
+      // CRITICAL: Trim orders array for each bot to prevent storage bloat
+      // Keep only last 10 orders per bot (with 51 bots, this is 510 orders max vs unlimited growth)
+      for (const botState of this.state.botStates.values()) {
+        if (botState.orders.length > 10) {
+          botState.orders = botState.orders.slice(-10);
+        }
       }
 
       this.state.lastTickTs = currentTime;
