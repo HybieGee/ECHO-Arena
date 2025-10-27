@@ -283,11 +283,20 @@ export class MatchCoordinator extends DurableObject {
         }),
       });
 
+      // Check response status first
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Bitquery API error (${response.status}):`, errorText.substring(0, 500));
+        console.warn('Falling back to cached/mock tokens due to API error');
+        return this.getFallbackTokens();
+      }
+
       const result = await response.json();
 
       if (!result.data || !result.data.Trading || !result.data.Trading.Pairs) {
         console.error('Invalid Bitquery response:', JSON.stringify(result, null, 2));
-        throw new Error('Invalid response from Bitquery API');
+        console.warn('Falling back to cached/mock tokens due to invalid response');
+        return this.getFallbackTokens();
       }
 
       const pairsData = result.data.Trading.Pairs;
@@ -347,10 +356,12 @@ export class MatchCoordinator extends DurableObject {
           continue;
         }
 
-        // Estimate holders and age based on volume
-        // Higher volume tokens likely have more participants
-        const holders = Math.max(Math.floor(volumeUSD / 10), 50);
-        const ageMins = volumeUSD > 10000 ? 60 : volumeUSD > 1000 ? 180 : 360;
+        // Estimate holders based on volume (higher volume = more participants)
+        const holders = Math.max(Math.floor(volumeUSD / 100), 20);
+
+        // Estimate age based on volume - high recent volume = fresh/trending
+        // Since we're looking at last 15min of data, high volume = actively traded = likely fresh
+        const ageMins = volumeUSD > 100000 ? 5 : volumeUSD > 50000 ? 10 : volumeUSD > 10000 ? 30 : 120;
 
         tokens.push({
           address: tokenAddress,
@@ -370,6 +381,7 @@ export class MatchCoordinator extends DurableObject {
         console.log(
           `✅ Added four.meme token: ${symbol} | ` +
           `Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | ` +
+          `Age: ${ageMins}m | Holders: ${holders} | Liq: ${estimatedLiquidityBNB.toFixed(1)} BNB | ` +
           `Vol (15m): $${volumeUSD.toFixed(0)} | ` +
           `CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)} | ` +
           `Source: Bitquery`
@@ -396,26 +408,43 @@ export class MatchCoordinator extends DurableObject {
   }
 
   /**
-   * Fallback tokens in case API fails
+   * Fallback four.meme tokens in case API fails
+   * Multiple tokens with varying ages to match different bot strategies
    */
   private getFallbackTokens(): Token[] {
     const baseTime = Date.now();
     const priceVariation = Math.sin(baseTime / 10000) * 0.1 + 1;
 
     return [
+      // Fresh token (< 10 min)
       {
-        address: '0x1234567890123456789012345678901234567890',
-        symbol: 'FALLBACK',
-        priceInBNB: 0.001 * priceVariation,
-        liquidityBNB: 150,
-        holders: 120,
-        ageMins: 120,
-        taxPct: 5,
+        address: '0x1234567890123456789012345678901234564444',
+        symbol: 'FRESH4',
+        priceInBNB: 0.0001 * priceVariation,
+        liquidityBNB: 50,
+        holders: 35,
+        ageMins: 8,
+        taxPct: 0,
         isHoneypot: false,
         ownerRenounced: false,
         lpLocked: true,
         volumeUSD24h: 150000,
-        priceChange24h: 35.5 * priceVariation,
+        priceChange24h: 45.5 * priceVariation,
+      },
+      // Medium fresh token (< 30 min)
+      {
+        address: '0x9876543210987654321098765432109876544444',
+        symbol: 'MED4',
+        priceInBNB: 0.0005 * priceVariation,
+        liquidityBNB: 80,
+        holders: 60,
+        ageMins: 25,
+        taxPct: 0,
+        isHoneypot: false,
+        ownerRenounced: false,
+        lpLocked: true,
+        volumeUSD24h: 200000,
+        priceChange24h: 25.5 * priceVariation,
       },
     ];
   }
