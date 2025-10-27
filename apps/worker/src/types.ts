@@ -18,6 +18,7 @@ export interface Env {
   BSC_RPC_URL: string;
   ECHO_TOKEN_ADDRESS: string;
   DEXSCREENER_API?: string;
+  BITQUERY_API_TOKEN: string;
   FREE_START: string;
   FREE_END: string;
   ALLOWLIST_ADMINS: string;
