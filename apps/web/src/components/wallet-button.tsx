@@ -8,6 +8,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
+import { PillButton } from './pill-button';
 
 export function WalletButton() {
   const { address, isConnected } = useAccount();
@@ -33,15 +34,16 @@ export function WalletButton() {
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-3">
-        <div className="px-4 py-2 bg-purple-900/30 border border-purple-500/30 rounded-lg text-sm text-purple-300 font-mono">
+        <div className="px-4 py-2 bg-purple-900/30 border border-purple-500/30 rounded-full text-sm text-purple-300 font-mono">
           {address.slice(0, 6)}...{address.slice(-4)}
         </div>
-        <button
+        <PillButton
           onClick={() => disconnect()}
-          className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 hover:border-red-500/50 rounded-lg text-sm text-red-300 transition-all"
+          variant="danger"
+          size="sm"
         >
           Disconnect
-        </button>
+        </PillButton>
       </div>
     );
   }
@@ -140,12 +142,12 @@ export function WalletButton() {
 
   return (
     <>
-      <button
+      <PillButton
         onClick={() => setShowModal(true)}
-        className="px-6 py-3 bg-gradient-to-r from-echo-magenta to-echo-cyan hover:shadow-neon-magenta-lg font-orbitron font-bold text-white rounded-lg transition-all duration-300 hover:scale-105 active:scale-95 tracking-wider uppercase"
+        size="md"
       >
         CONNECT
-      </button>
+      </PillButton>
 
       {mounted && showModal && createPortal(modalContent, document.body)}
     </>
