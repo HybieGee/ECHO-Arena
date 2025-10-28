@@ -102,6 +102,41 @@ matchRoutes.get('/history', async (c) => {
 });
 
 /**
+ * GET /api/match/bnb-price
+ * Get current BNB price in USD
+ * IMPORTANT: Must come before /:id route to avoid being caught by dynamic param
+ */
+matchRoutes.get('/bnb-price', async (c) => {
+  try {
+    // Get BNB price from cache (updated by GeckoTerminal service)
+    const cached = await c.env.RESULTS.get('bnb_price_usd');
+
+    if (cached) {
+      const data = JSON.parse(cached);
+      return c.json({
+        price: data.price,
+        timestamp: data.timestamp,
+        source: 'GeckoTerminal'
+      });
+    }
+
+    // Fallback if no cached price
+    return c.json({
+      price: 600,
+      timestamp: Date.now(),
+      source: 'fallback'
+    });
+  } catch (error) {
+    console.error('Error fetching BNB price:', error);
+    return c.json({
+      price: 600,
+      timestamp: Date.now(),
+      source: 'fallback'
+    });
+  }
+});
+
+/**
  * GET /api/match/:id
  * Get specific match details
  */
@@ -138,39 +173,5 @@ matchRoutes.get('/:id', async (c) => {
   } catch (error) {
     console.error('Error fetching match details:', error);
     return c.json({ error: 'Failed to fetch match' }, 500);
-  }
-});
-
-/**
- * GET /api/match/bnb-price
- * Get current BNB price in USD
- */
-matchRoutes.get('/bnb-price', async (c) => {
-  try {
-    // Get BNB price from cache (updated by GeckoTerminal service)
-    const cached = await c.env.RESULTS.get('bnb_price_usd');
-
-    if (cached) {
-      const data = JSON.parse(cached);
-      return c.json({
-        price: data.price,
-        timestamp: data.timestamp,
-        source: 'GeckoTerminal'
-      });
-    }
-
-    // Fallback if no cached price
-    return c.json({
-      price: 600,
-      timestamp: Date.now(),
-      source: 'fallback'
-    });
-  } catch (error) {
-    console.error('Error fetching BNB price:', error);
-    return c.json({
-      price: 600,
-      timestamp: Date.now(),
-      source: 'fallback'
-    });
   }
 });
