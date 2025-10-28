@@ -5,6 +5,8 @@
 
 'use client';
 
+import Image from 'next/image';
+
 export default function WhitepaperPage() {
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl">
@@ -314,10 +316,18 @@ export default function WhitepaperPage() {
         <h2 className="text-3xl font-bold mb-4 text-neon-cyan">Contact & Community</h2>
         <div className="card-arena p-6">
           <div className="flex justify-center">
-            <div className="p-6 bg-arena-bg rounded">
-              <div className="text-5xl mb-3 text-center">🐦</div>
+            <div className="p-6 rounded">
+              <div className="flex justify-center mb-3">
+                <Image
+                  src="/icons/xLogo.png"
+                  alt="X (Twitter)"
+                  width={60}
+                  height={60}
+                  className="object-contain"
+                />
+              </div>
               <div className="text-gray-400 text-sm mb-2 text-center">Follow us on Twitter</div>
-              <div className="text-neon-cyan text-xl font-semibold">@EchoArenaOnline</div>
+              <div className="text-neon-cyan text-xl font-semibold text-center">@EchoArenaOnline</div>
             </div>
           </div>
         </div>
