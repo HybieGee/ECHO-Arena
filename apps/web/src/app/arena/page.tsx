@@ -440,8 +440,12 @@ export default function ArenaPage() {
                         <tr key={idx} className="border-b border-arena-border hover:bg-arena-hover">
                           <td className="py-2 px-2 font-mono text-neon-cyan">{pos.symbol}</td>
                           <td className="py-2 px-2 text-right">{pos.qty?.toFixed(4)}</td>
-                          <td className="py-2 px-2 text-right">{pos.avgPrice?.toFixed(8)}</td>
-                          <td className="py-2 px-2 text-right">{pos.currentPrice?.toFixed(8)}</td>
+                          <td className="py-2 px-2 text-right">
+                            ${((pos.avgPrice || 0) * 600).toFixed(8)}
+                          </td>
+                          <td className="py-2 px-2 text-right">
+                            ${((pos.currentPrice || 0) * 600).toFixed(8)}
+                          </td>
                           <td className="py-2 px-2 text-right">{pos.marketValue?.toFixed(4)} BNB</td>
                           <td className={`py-2 px-2 text-right font-semibold ${
                             (pos.unrealizedPnL || 0) >= 0 ? 'text-neon-green' : 'text-neon-red'
@@ -510,7 +514,9 @@ export default function ArenaPage() {
                             {order.side.toUpperCase()}
                           </td>
                           <td className="py-2 px-2 text-right">{order.qty?.toFixed(4)}</td>
-                          <td className="py-2 px-2 text-right">{order.fillPrice?.toFixed(8)}</td>
+                          <td className="py-2 px-2 text-right">
+                            ${((order.fillPrice || 0) * 600).toFixed(8)}
+                          </td>
                           <td className="py-2 px-2 text-right text-gray-400">{order.fee?.toFixed(6)} BNB</td>
                         </tr>
                       ))}
