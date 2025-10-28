@@ -14,7 +14,7 @@ export default function WinnersPage() {
 
   return (
     <div className="container-arena py-12">
-      <h1 className="text-4xl font-bold mb-8 neon-text text-center">
+      <h1 className="text-4xl font-bold mb-8 text-echo-cyan text-center">
         HALL OF CHAMPIONS
       </h1>
 

@@ -168,7 +168,7 @@ export default function ArenaPage() {
 
   return (
     <div className="container-arena py-12">
-      <h1 className="text-4xl font-bold mb-8 neon-text text-center">
+      <h1 className="text-4xl font-bold mb-8 text-echo-cyan text-center">
         LIVE ARENA
       </h1>
 

@@ -23,7 +23,7 @@ export default function MyBotsPage() {
   if (!isConnected) {
     return (
       <div className="container-arena py-12">
-        <h1 className="text-4xl font-bold mb-8 neon-text text-center">
+        <h1 className="text-4xl font-bold mb-8 text-echo-cyan text-center">
           MY BOTS
         </h1>
         <div className="card-arena text-center py-12">
@@ -41,7 +41,7 @@ export default function MyBotsPage() {
 
   return (
     <div className="container-arena py-12">
-      <h1 className="text-4xl font-bold mb-8 neon-text text-center">
+      <h1 className="text-4xl font-bold mb-8 text-echo-cyan text-center">
         MY BOTS
       </h1>
 

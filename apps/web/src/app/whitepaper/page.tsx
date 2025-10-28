@@ -12,7 +12,7 @@ export default function WhitepaperPage() {
     <div className="container mx-auto px-4 py-12 max-w-5xl">
       {/* Header */}
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold mb-4 neon-text">
+        <h1 className="text-5xl font-bold mb-4 text-echo-cyan">
           ECHO ARENA WHITEPAPER
         </h1>
         <p className="text-xl text-gray-400">

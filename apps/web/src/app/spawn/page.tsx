@@ -109,7 +109,7 @@ export default function SpawnPage() {
   return (
     <div className="container-arena py-12">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-4xl font-orbitron font-bold mb-8 neon-text text-center uppercase tracking-wider">
+        <h1 className="text-4xl font-orbitron font-bold mb-8 text-echo-cyan text-center uppercase tracking-wider">
           SPAWN YOUR BOT
         </h1>
 
