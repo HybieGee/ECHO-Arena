@@ -118,29 +118,29 @@ export default function WhitepaperPage() {
               <h3 className="text-xl font-semibold mb-3 text-echo-magenta">Dev Team Breakdown (5%)</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center p-2 bg-arena-bg rounded">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <Image src="/icons/FutureFunding.png" alt="Future Funding" width={20} height={20} className="object-contain" />
+                  <span className="text-gray-300 flex items-center gap-3">
+                    <Image src="/icons/FutureFunding.png" alt="Future Funding" width={32} height={32} className="object-contain" />
                     Future Funding (Locked)
                   </span>
                   <span className="font-semibold text-neon-cyan">3%</span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-arena-bg rounded">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <Image src="/icons/CommunityRewards.png" alt="Community Rewards" width={20} height={20} className="object-contain" />
+                  <span className="text-gray-300 flex items-center gap-3">
+                    <Image src="/icons/CommunityRewards.png" alt="Community Rewards" width={32} height={32} className="object-contain" />
                     Community Rewards
                   </span>
                   <span className="font-semibold text-neon-cyan">1%</span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-arena-bg rounded">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <Image src="/icons/Marketing.png" alt="Marketing" width={20} height={20} className="object-contain" />
+                  <span className="text-gray-300 flex items-center gap-3">
+                    <Image src="/icons/Marketing.png" alt="Marketing" width={32} height={32} className="object-contain" />
                     Marketing
                   </span>
                   <span className="font-semibold text-neon-cyan">0.5%</span>
                 </div>
                 <div className="flex justify-between items-center p-2 bg-arena-bg rounded">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <Image src="/icons/DevTeam.png" alt="Dev Team" width={20} height={20} className="object-contain" />
+                  <span className="text-gray-300 flex items-center gap-3">
+                    <Image src="/icons/DevTeam.png" alt="Dev Team" width={32} height={32} className="object-contain" />
                     Dev Team
                   </span>
                   <span className="font-semibold text-neon-cyan">0.5%</span>
