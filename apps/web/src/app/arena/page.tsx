@@ -158,8 +158,8 @@ export default function ArenaPage() {
       dataPoint[botKey] = parseFloat(bot.balance || 0);
     });
 
-    // Add to history (keep last 60 data points = 5 minutes at 5s intervals)
-    historyRef.current = [...historyRef.current, dataPoint].slice(-60);
+    // Add to history (keep all data points from match start)
+    historyRef.current = [...historyRef.current, dataPoint];
     setBalanceHistory(historyRef.current);
   }, [leaderboard]);
 
@@ -188,13 +188,21 @@ export default function ArenaPage() {
                   stroke="#666"
                   tick={{ fill: '#888', fontSize: 11 }}
                   tickMargin={8}
-                  interval="preserveStartEnd"
+                  minTickGap={80}
+                  tickFormatter={(value, index) => {
+                    // Show first, last, and evenly distributed ticks
+                    const dataLength = balanceHistory.length;
+                    if (index === 0 || index === dataLength - 1) return value;
+                    // Show every ~20th tick for better spacing
+                    if (index % Math.max(1, Math.floor(dataLength / 10)) === 0) return value;
+                    return '';
+                  }}
                 />
                 <YAxis
                   stroke="#666"
                   tick={{ fill: '#888', fontSize: 11 }}
-                  domain={[0, 5]}
-                  ticks={Array.from({ length: 51 }, (_, i) => i * 0.1)}
+                  domain={[0, 3]}
+                  ticks={Array.from({ length: 31 }, (_, i) => i * 0.1)}
                   tickFormatter={(value) => {
                     // Only show labels for multiples of 0.5
                     return value % 0.5 === 0 ? value.toFixed(1) : '';
