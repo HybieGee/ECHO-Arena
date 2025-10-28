@@ -105,7 +105,7 @@ export function WalletButton() {
                   className="w-full p-4 bg-gradient-to-br from-arena-surface to-arena-hover border-2 border-echo-magenta/20 hover:border-echo-cyan/50 rounded-xl text-left transition-all duration-300 group hover:shadow-glow-ring-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-arena-bg rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform p-2">
+                    <div className="w-14 h-14 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform p-2">
                       <Image
                         src={walletIconPath}
                         alt={walletName}
