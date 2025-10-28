@@ -184,34 +184,63 @@ export class GeckoTerminalService {
    * Fetch tokens from GeckoTerminal API
    */
   private async fetchFromAPI(): Promise<Token[]> {
-    // Fetch multiple pages of trending pools for more variety
+    // Fetch multiple pages of trending pools and new pools for variety
     const allPools: GeckoTerminalPool[] = [];
 
-    // Fetch pages 1-3 (60 pools total)
-    for (let page = 1; page <= 3; page++) {
+    // Fetch pages 1-15 from trending (300 pools total)
+    for (let page = 1; page <= 15; page++) {
       try {
         const url = `${GECKOTERMINAL_API}/networks/${BSC_NETWORK}/trending_pools?page=${page}`;
 
         const response = await fetch(url, {
           headers: {
             'Accept': 'application/json',
-            'X-CG-PRO-API-KEY': this.env.COINGECKO_API_KEY || '', // Optional: add API key if using paid plan
+            'X-CG-PRO-API-KEY': this.env.COINGECKO_API_KEY || '',
           },
         });
 
         if (!response.ok) {
-          console.error(`GeckoTerminal API error page ${page} (${response.status})`);
-          continue; // Skip this page, continue with others
+          console.error(`GeckoTerminal trending API error page ${page} (${response.status})`);
+          continue;
         }
 
         const data = await response.json();
 
         if (data.data && Array.isArray(data.data)) {
           allPools.push(...data.data);
-          console.log(`Fetched ${data.data.length} pools from page ${page}`);
+          console.log(`📊 Fetched ${data.data.length} trending pools from page ${page}`);
         }
       } catch (error) {
-        console.error(`Error fetching page ${page}:`, error);
+        console.error(`Error fetching trending page ${page}:`, error);
+        continue;
+      }
+    }
+
+    // Also fetch new pools to catch four.meme launches (pages 1-5 = 100 pools)
+    for (let page = 1; page <= 5; page++) {
+      try {
+        const url = `${GECKOTERMINAL_API}/networks/${BSC_NETWORK}/new_pools?page=${page}`;
+
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'X-CG-PRO-API-KEY': this.env.COINGECKO_API_KEY || '',
+          },
+        });
+
+        if (!response.ok) {
+          console.error(`GeckoTerminal new pools API error page ${page} (${response.status})`);
+          continue;
+        }
+
+        const data = await response.json();
+
+        if (data.data && Array.isArray(data.data)) {
+          allPools.push(...data.data);
+          console.log(`🆕 Fetched ${data.data.length} new pools from page ${page}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching new pools page ${page}:`, error);
         continue;
       }
     }
@@ -275,8 +304,8 @@ export class GeckoTerminalService {
         // Estimate holders based on volume
         const holders = Math.max(Math.floor(volumeUSD24h / 100), 20);
 
-        // Filter criteria
-        if (liquidityBNB < 1) {
+        // Filter criteria - very permissive to get 50+ tokens
+        if (liquidityBNB < 0.3) { // Lowered from 1 BNB to 0.3 BNB
           console.log(`⚠️ Skipping ${symbol} - liquidity too low: ${liquidityBNB.toFixed(2)} BNB`);
           continue;
         }
@@ -322,7 +351,14 @@ export class GeckoTerminalService {
       return this.getFallbackTokens();
     }
 
-    return tokens.slice(0, 50); // Limit to 50 tokens
+    // Remove duplicates by address
+    const uniqueTokens = tokens.filter((token, index, self) =>
+      index === self.findIndex((t) => t.address.toLowerCase() === token.address.toLowerCase())
+    );
+
+    console.log(`After deduplication: ${uniqueTokens.length} unique tokens`);
+
+    return uniqueTokens.slice(0, 100); // Increased from 50 to 100 tokens
   }
 
   /**
