@@ -19,6 +19,7 @@ export interface Env {
   ECHO_TOKEN_ADDRESS: string;
   DEXSCREENER_API?: string;
   BITQUERY_API_TOKEN: string;
+  COINGECKO_API_KEY: string; // GeckoTerminal/CoinGecko API key for paid plan
   FREE_START: string;
   FREE_END: string;
   ALLOWLIST_ADMINS: string;

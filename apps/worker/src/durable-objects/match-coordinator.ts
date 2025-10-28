@@ -18,6 +18,7 @@ import {
   type BotState,
   type Token,
 } from '@echo-arena/sim';
+import { createGeckoTerminalService } from '../lib/geckoterminal';
 
 interface Bot {
   id: number;
@@ -219,192 +220,17 @@ export class MatchCoordinator extends DurableObject {
   }
 
   /**
-   * Fetch token universe from Bitquery API
-   * Gets BSC four.meme tokens with real-time pricing directly from fourmeme_v1 protocol
+   * Fetch token universe from GeckoTerminal API
+   * Gets BSC tokens with rate limiting and credit tracking
+   *
+   * IMPORTANT: Always fetches FRESH data for simulation (skipCache=true)
+   * This ensures bots trade on real-time prices, not stale cached data
    */
   private async fetchUniverse(): Promise<Token[]> {
-    try {
-      // Calculate time window for recent trades (last 15 minutes)
-      const timeAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-
-      // Get BNB price in USD for conversion
-      const bnbPriceUSD = 600; // Approximate BNB price
-
-      // GraphQL query for four.meme tokens using Bitquery V2 API
-      const query = `
-        query GetFourMemeTokens($timeAgo: DateTime) {
-          Trading {
-            Pairs(
-              where: {
-                Block: {Time: {since: $timeAgo}}
-                Price: {IsQuotedInUsd: true}
-                Market: {
-                  Protocol: {is: "fourmeme_v1"}
-                  Network: {is: "Binance Smart Chain"}
-                }
-                Volume: {Usd: {gt: 50}}
-              }
-              limit: {count: 100}
-              orderBy: {descending: Volume_Usd}
-            ) {
-              Token {
-                Name
-                Symbol
-                Address
-              }
-              Volume {
-                Usd
-              }
-              Price {
-                Average {
-                  Mean
-                }
-              }
-              Block {
-                Time
-              }
-            }
-          }
-        }
-      `;
-
-      console.log(`Querying Bitquery for four.meme tokens (trades since ${timeAgo})...`);
-
-      // Make GraphQL request to Bitquery
-      const response = await fetch('https://streaming.bitquery.io/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.env.BITQUERY_API_TOKEN}`,
-        },
-        body: JSON.stringify({
-          query,
-          variables: { timeAgo },
-        }),
-      });
-
-      // Check response status first
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Bitquery API error (${response.status}):`, errorText.substring(0, 500));
-        console.warn('Falling back to cached/mock tokens due to API error');
-        return this.getFallbackTokens();
-      }
-
-      const result = await response.json();
-
-      if (!result.data || !result.data.Trading || !result.data.Trading.Pairs) {
-        console.error('Invalid Bitquery response:', JSON.stringify(result, null, 2));
-        console.warn('Falling back to cached/mock tokens due to invalid response');
-        return this.getFallbackTokens();
-      }
-
-      const pairsData = result.data.Trading.Pairs;
-      console.log(`Received ${pairsData.length} pair entries from Bitquery`);
-
-      // Group by token address to get unique tokens with latest data
-      const tokenMap = new Map<string, any>();
-
-      for (const pair of pairsData) {
-        const tokenAddress = pair.Token?.Address;
-        if (!tokenAddress) continue;
-
-        // Verify it's a four.meme token (ends in 4444)
-        if (!tokenAddress.toLowerCase().endsWith('4444')) {
-          continue;
-        }
-
-        // Keep the latest entry for each token (they're already sorted by volume desc)
-        if (!tokenMap.has(tokenAddress)) {
-          tokenMap.set(tokenAddress, pair);
-        }
-      }
-
-      console.log(`Found ${tokenMap.size} unique four.meme tokens`);
-
-      // Transform to Token format
-      const tokens: Token[] = [];
-
-      for (const [tokenAddress, pair] of tokenMap.entries()) {
-        const priceUSD = parseFloat(pair.Price?.Average?.Mean || '0');
-        const volumeUSD = parseFloat(pair.Volume?.Usd || '0');
-        const symbol = pair.Token?.Symbol || pair.Token?.Name || 'UNKNOWN';
-        const name = pair.Token?.Name || symbol;
-
-        // Skip tokens with no price data
-        if (!priceUSD || priceUSD <= 0) {
-          console.log(`⚠️ Skipping ${symbol} - no price data`);
-          continue;
-        }
-
-        // Convert USD price to BNB price
-        const priceInBNB = priceUSD / bnbPriceUSD;
-
-        // Validate price is reasonable
-        if (priceInBNB < 0.000000001) {
-          console.log(`⚠️ Skipping ${symbol} - price too low: ${priceInBNB}`);
-          continue;
-        }
-
-        // Estimate liquidity from volume (rough approximation)
-        const estimatedLiquidityBNB = Math.max(volumeUSD / bnbPriceUSD / 10, 5);
-
-        // Minimum volume filter (already filtered in query at $50)
-        const minVolume = 50; // $50 in last 15 minutes
-        if (volumeUSD < minVolume) {
-          console.log(`⚠️ Skipping ${symbol} - volume too low: $${volumeUSD.toFixed(2)} (min: $${minVolume})`);
-          continue;
-        }
-
-        // Estimate holders based on volume (higher volume = more participants)
-        const holders = Math.max(Math.floor(volumeUSD / 100), 20);
-
-        // Estimate age based on volume - high recent volume = fresh/trending
-        // Since we're looking at last 15min of data, high volume = actively traded = likely fresh
-        const ageMins = volumeUSD > 100000 ? 5 : volumeUSD > 50000 ? 10 : volumeUSD > 10000 ? 30 : 120;
-
-        tokens.push({
-          address: tokenAddress,
-          symbol: symbol.substring(0, 20),
-          priceInBNB,
-          liquidityBNB: estimatedLiquidityBNB,
-          holders,
-          ageMins,
-          taxPct: 0,
-          isHoneypot: false,
-          ownerRenounced: false,
-          lpLocked: true,
-          volumeUSD24h: volumeUSD * 96, // Extrapolate 15min volume to 24h
-          priceChange24h: 0,
-        });
-
-        console.log(
-          `✅ Added four.meme token: ${symbol} | ` +
-          `Price: ${priceInBNB.toFixed(10)} BNB ($${priceUSD.toFixed(6)}) | ` +
-          `Age: ${ageMins}m | Holders: ${holders} | Liq: ${estimatedLiquidityBNB.toFixed(1)} BNB | ` +
-          `Vol (15m): $${volumeUSD.toFixed(0)} | ` +
-          `CA: ${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-6)} | ` +
-          `Source: Bitquery`
-        );
-      }
-
-      // Log summary stats
-      const fourMemeCount = tokens.filter((t) => t.address.toLowerCase().endsWith('4444')).length;
-      console.log(
-        `Fetched ${tokens.length} tokens from Bitquery (four.meme: ${fourMemeCount}, recent activity: 15m)`
-      );
-
-      // Return at least some tokens, fallback to mock if API fails
-      if (tokens.length === 0) {
-        console.warn('No tokens fetched from Bitquery, using fallback token');
-        return this.getFallbackTokens();
-      }
-
-      return tokens;
-    } catch (error) {
-      console.error('Error fetching universe from Bitquery:', error);
-      return this.getFallbackTokens();
-    }
+    const geckoService = createGeckoTerminalService(this.env);
+    // skipCache=true: Always get fresh prices for simulation
+    // Cache is only used for leaderboard/user views (via routes)
+    return await geckoService.fetchBSCTokens(true);
   }
 
   /**

@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { calculatePrize } from '@echo-arena/sim';
+import { createGeckoTerminalService } from '../lib/geckoterminal';
 
 export const adminRoutes = new Hono<{ Bindings: Env }>();
 
@@ -338,5 +339,54 @@ adminRoutes.get('/winners/unpaid', async (c) => {
   } catch (error) {
     console.error('Error fetching unpaid winners:', error);
     return c.json({ error: 'Failed to fetch winners' }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/api-usage
+ * Get GeckoTerminal API usage statistics
+ */
+adminRoutes.get('/api-usage', async (c) => {
+  try {
+    const geckoService = createGeckoTerminalService(c.env);
+    const stats = await geckoService.getUsageStats();
+
+    // Calculate percentages and warnings
+    const maxCreditsPerMonth = 480000; // 500k with buffer
+    const maxRequestsPerMin = 450; // 500 with buffer
+
+    const creditsPercent = ((stats.credits.count / maxCreditsPerMonth) * 100).toFixed(2);
+    const requestsPercent = ((stats.rateLimit.requestCount / maxRequestsPerMin) * 100).toFixed(2);
+
+    // Calculate time until rate limit window resets
+    const rateLimitWindowMs = 60 * 1000; // 1 minute
+    const rateLimitResetMs = stats.rateLimit.windowStart + rateLimitWindowMs - Date.now();
+    const rateLimitResetSec = Math.max(0, Math.ceil(rateLimitResetMs / 1000));
+
+    return c.json({
+      credits: {
+        used: stats.credits.count,
+        limit: maxCreditsPerMonth,
+        hardLimit: 500000,
+        percent: creditsPercent,
+        month: stats.credits.month,
+        status: stats.credits.count >= maxCreditsPerMonth ? 'EXCEEDED' : stats.credits.count >= maxCreditsPerMonth * 0.9 ? 'WARNING' : 'OK',
+      },
+      rateLimit: {
+        current: stats.rateLimit.requestCount,
+        limit: maxRequestsPerMin,
+        hardLimit: 500,
+        percent: requestsPercent,
+        resetsIn: `${rateLimitResetSec}s`,
+        status: stats.rateLimit.requestCount >= maxRequestsPerMin ? 'EXCEEDED' : stats.rateLimit.requestCount >= maxRequestsPerMin * 0.9 ? 'WARNING' : 'OK',
+      },
+      warnings: [
+        ...(stats.credits.count >= maxCreditsPerMonth * 0.9 ? [`High credit usage: ${creditsPercent}%`] : []),
+        ...(stats.rateLimit.requestCount >= maxRequestsPerMin * 0.9 ? [`High rate limit usage: ${requestsPercent}%`] : []),
+      ],
+    });
+  } catch (error) {
+    console.error('Error fetching API usage stats:', error);
+    return c.json({ error: 'Failed to fetch API usage stats' }, 500);
   }
 });
