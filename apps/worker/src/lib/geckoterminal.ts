@@ -184,32 +184,41 @@ export class GeckoTerminalService {
    * Fetch tokens from GeckoTerminal API
    */
   private async fetchFromAPI(): Promise<Token[]> {
-    // Fetch trending pools on BSC with BNB as quote token
-    const url = `${GECKOTERMINAL_API}/networks/${BSC_NETWORK}/trending_pools?page=1`;
+    // Fetch multiple pages of trending pools for more variety
+    const allPools: GeckoTerminalPool[] = [];
 
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'X-CG-PRO-API-KEY': this.env.COINGECKO_API_KEY || '', // Optional: add API key if using paid plan
-      },
-    });
+    // Fetch pages 1-3 (60 pools total)
+    for (let page = 1; page <= 3; page++) {
+      try {
+        const url = `${GECKOTERMINAL_API}/networks/${BSC_NETWORK}/trending_pools?page=${page}`;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`GeckoTerminal API error (${response.status}):`, errorText.substring(0, 500));
-      throw new Error(`GeckoTerminal API error: ${response.status}`);
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'X-CG-PRO-API-KEY': this.env.COINGECKO_API_KEY || '', // Optional: add API key if using paid plan
+          },
+        });
+
+        if (!response.ok) {
+          console.error(`GeckoTerminal API error page ${page} (${response.status})`);
+          continue; // Skip this page, continue with others
+        }
+
+        const data = await response.json();
+
+        if (data.data && Array.isArray(data.data)) {
+          allPools.push(...data.data);
+          console.log(`Fetched ${data.data.length} pools from page ${page}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching page ${page}:`, error);
+        continue;
+      }
     }
 
-    const data = await response.json();
+    const pools: GeckoTerminalPool[] = allPools;
 
-    if (!data.data || !Array.isArray(data.data)) {
-      console.error('Invalid GeckoTerminal response format');
-      throw new Error('Invalid API response format');
-    }
-
-    const pools: GeckoTerminalPool[] = data.data;
-
-    console.log(`Received ${pools.length} pools from GeckoTerminal`);
+    console.log(`Received ${pools.length} total pools from GeckoTerminal`);
 
     // Transform to Token format
     const tokens: Token[] = [];
@@ -272,8 +281,8 @@ export class GeckoTerminalService {
           continue;
         }
 
-        if (ageMins > 10080) { // Max 1 week old
-          console.log(`⚠️ Skipping ${symbol} - too old: ${ageMins} minutes`);
+        if (ageMins > 525600) { // Max 1 year old (365 days)
+          console.log(`⚠️ Skipping ${symbol} - too old: ${ageMins} minutes (${Math.floor(ageMins / 1440)} days)`);
           continue;
         }
 

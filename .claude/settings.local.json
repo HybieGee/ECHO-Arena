@@ -43,7 +43,8 @@
       "Bash(timeout 10 npx wrangler tail:*)",
       "WebFetch(domain:docs.geckoterminal.com)",
       "WebFetch(domain:apiguide.geckoterminal.com)",
-      "Bash(timeout 90 npx wrangler:*)"
+      "Bash(timeout 90 npx wrangler:*)",
+      "Bash(timeout 45 npx wrangler tail:*)"
     ],
     "deny": [],
     "ask": []
