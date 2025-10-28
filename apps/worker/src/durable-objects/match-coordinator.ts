@@ -376,9 +376,62 @@ export class MatchCoordinator extends DurableObject {
         .run();
 
       console.log(`Match ${this.state.matchId} settled successfully. Winner: ${results[0]?.owner_address} with ${results[0]?.final_balance.toFixed(4)} BNB (+${results[0]?.gain_pct.toFixed(2)}%)`);
+
+      // AUTOMATIC MATCH ROTATION: Create and start next match immediately
+      await this.createNextMatch();
     } catch (error) {
       console.error(`Error updating D1 during settlement for match ${this.state.matchId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Automatically create and start the next match
+   * Called after current match settles to ensure 24/7 continuous matches
+   */
+  private async createNextMatch() {
+    try {
+      const currentTime = Math.floor(Date.now() / 1000);
+      const nextMatchStart = currentTime;
+      const nextMatchEnd = currentTime + 24 * 3600; // 24 hours from now
+
+      console.log('Creating next match automatically...');
+
+      // Create new match in D1
+      const newMatch = await (this.env as any).DB.prepare(
+        'INSERT INTO matches (start_ts, end_ts, status) VALUES (?, ?, ?) RETURNING *'
+      )
+        .bind(nextMatchStart, nextMatchEnd, 'running')
+        .first();
+
+      if (!newMatch) {
+        console.error('Failed to create next match');
+        return;
+      }
+
+      const newMatchId = newMatch.id;
+      console.log(`Created new match ${newMatchId}, starting automatically...`);
+
+      // Get the new match coordinator instance
+      const newMatchCoordinatorId = (this.env as any).MATCH_COORDINATOR.idFromName(`match-${newMatchId}`);
+      const newMatchStub = (this.env as any).MATCH_COORDINATOR.get(newMatchCoordinatorId);
+
+      // Start the new match with empty bots array (bots will join via spawn)
+      await newMatchStub.fetch('https://match/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchId: newMatchId,
+          startTs: nextMatchStart * 1000, // Convert to milliseconds
+          endTs: nextMatchEnd * 1000,
+          bots: [], // Empty array - bots join dynamically
+        }),
+      });
+
+      console.log(`New match ${newMatchId} started automatically! 24/7 rotation active.`);
+    } catch (error) {
+      console.error('Error creating next match:', error);
+      // Don't throw - we don't want to crash the settlement process
     }
   }
 
