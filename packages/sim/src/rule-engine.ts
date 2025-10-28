@@ -235,13 +235,16 @@ function checkEntries(
     score: calculateSignalScore(signal, token),
   }));
 
-  // Sort by score (descending) - deterministic
+  // Sort by score (descending) - deterministic but unique per bot
   scored.sort((a, b) => {
     if (b.score !== a.score) {
       return b.score - a.score;
     }
-    // Tie-breaker: use address for determinism
-    return a.token.address.localeCompare(b.token.address);
+    // Tie-breaker: use address XOR with rngSeed for bot-specific ordering
+    // This ensures each bot has different preferences when scores are equal
+    const hashA = hashAddressWithSeed(a.token.address, rngSeed);
+    const hashB = hashAddressWithSeed(b.token.address, rngSeed);
+    return hashB - hashA;
   });
 
   // Filter by threshold based on signal type
@@ -416,6 +419,21 @@ function calculateSignalScore(signal: string, token: Token): number {
     default:
       return 0;
   }
+}
+
+/**
+ * Hash a token address with a seed to create bot-specific ordering
+ * This ensures each bot has unique token preferences even with identical DSL
+ */
+function hashAddressWithSeed(address: string, seed: number): number {
+  // Simple deterministic hash combining address and seed
+  let hash = seed;
+  for (let i = 0; i < address.length; i++) {
+    const char = address.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
 }
 
 /**
