@@ -75,6 +75,8 @@ export const api = {
 
   getMatchHistory: () => fetchAPI('/match/history'),
 
+  getBnbPrice: () => fetchAPI('/match/bnb-price'),
+
   // Leaderboard
   getLeaderboard: () => fetchAPI('/leaderboard'),
 

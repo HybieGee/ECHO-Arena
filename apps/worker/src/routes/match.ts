@@ -140,3 +140,37 @@ matchRoutes.get('/:id', async (c) => {
     return c.json({ error: 'Failed to fetch match' }, 500);
   }
 });
+
+/**
+ * GET /api/match/bnb-price
+ * Get current BNB price in USD
+ */
+matchRoutes.get('/bnb-price', async (c) => {
+  try {
+    // Get BNB price from cache (updated by GeckoTerminal service)
+    const cached = await c.env.RESULTS.get('bnb_price_usd');
+
+    if (cached) {
+      const data = JSON.parse(cached);
+      return c.json({
+        price: data.price,
+        timestamp: data.timestamp,
+        source: 'GeckoTerminal'
+      });
+    }
+
+    // Fallback if no cached price
+    return c.json({
+      price: 600,
+      timestamp: Date.now(),
+      source: 'fallback'
+    });
+  } catch (error) {
+    console.error('Error fetching BNB price:', error);
+    return c.json({
+      price: 600,
+      timestamp: Date.now(),
+      source: 'fallback'
+    });
+  }
+});

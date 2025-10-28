@@ -213,7 +213,21 @@ export class GeckoTerminalService {
 
     // Transform to Token format
     const tokens: Token[] = [];
-    const bnbPriceUSD = 600; // Approximate BNB price for conversion
+
+    // Extract BNB price from first pool's quote token (WBNB)
+    let bnbPriceUSD = 600; // Fallback
+    if (pools.length > 0 && pools[0].attributes.quote_token_price_usd) {
+      bnbPriceUSD = parseFloat(pools[0].attributes.quote_token_price_usd);
+      console.log(`📊 BNB Price from GeckoTerminal: $${bnbPriceUSD.toFixed(2)}`);
+    }
+
+    // Cache BNB price for frontend use
+    await this.cache.put('bnb_price_usd', JSON.stringify({
+      price: bnbPriceUSD,
+      timestamp: Date.now()
+    }), {
+      expirationTtl: CACHE_TTL_SECONDS
+    });
 
     for (const pool of pools) {
       try {
