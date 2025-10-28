@@ -40,25 +40,73 @@ export function evaluateStrategy(
 
 /**
  * Filter token universe based on DSL criteria
+ * Includes fallback logic to relax filters when no matches are found
  */
 function filterUniverse(dsl: StrategyDSL, universe: Token[]): Token[] {
+  // Try strict filtering first
+  let filtered = applyFilters(dsl, universe, 1.0);
+
+  // Fallback 1: If no matches, relax age filter by 10x (e.g., 60min -> 600min)
+  if (filtered.length === 0 && dsl.universe?.ageMinutesMax) {
+    console.log(`⚠️ No tokens matched strict filters. Relaxing age limit from ${dsl.universe.ageMinutesMax} to ${dsl.universe.ageMinutesMax * 10} minutes`);
+    filtered = applyFilters(dsl, universe, 10.0);
+  }
+
+  // Fallback 2: If still no matches, relax age even more (100x) and reduce liquidity requirements
+  if (filtered.length === 0 && dsl.universe?.ageMinutesMax) {
+    console.log(`⚠️ Still no matches. Relaxing age limit to ${dsl.universe.ageMinutesMax * 100} minutes and reducing other filters`);
+    filtered = applyFilters(dsl, universe, 100.0, true);
+  }
+
+  // Fallback 3: If still nothing, use safety net filters only (honeypot + tax)
+  if (filtered.length === 0) {
+    console.log(`⚠️ No matches with relaxed filters. Using safety net filters only`);
+    filtered = universe.filter(token => {
+      if (dsl.blacklist?.taxPctMax && token.taxPct > dsl.blacklist.taxPctMax) {
+        return false;
+      }
+      if (dsl.blacklist?.honeypot && token.isHoneypot) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  return filtered;
+}
+
+/**
+ * Apply filters with age multiplier for fallback logic
+ */
+function applyFilters(
+  dsl: StrategyDSL,
+  universe: Token[],
+  ageMultiplier: number = 1.0,
+  relaxLiquidity: boolean = false
+): Token[] {
   return universe.filter(token => {
-    // Age filter (with safe defaults)
-    if (dsl.universe?.ageMinutesMax && token.ageMins > dsl.universe.ageMinutesMax) {
+    // Age filter with multiplier for fallback
+    if (dsl.universe?.ageMinutesMax && token.ageMins > dsl.universe.ageMinutesMax * ageMultiplier) {
       return false;
     }
 
-    // Liquidity filter (with safe defaults)
-    if (dsl.universe?.minLiquidityBNB && token.liquidityBNB < dsl.universe.minLiquidityBNB) {
+    // Liquidity filter (relaxed in fallback mode)
+    const minLiq = relaxLiquidity
+      ? (dsl.universe?.minLiquidityBNB || 0) * 0.5 // 50% of required liquidity
+      : (dsl.universe?.minLiquidityBNB || 0);
+    if (minLiq > 0 && token.liquidityBNB < minLiq) {
       return false;
     }
 
-    // Holders filter (with safe defaults)
-    if (dsl.universe?.minHolders && token.holders < dsl.universe.minHolders) {
+    // Holders filter (relaxed in fallback mode)
+    const minHolders = relaxLiquidity
+      ? (dsl.universe?.minHolders || 0) * 0.5 // 50% of required holders
+      : (dsl.universe?.minHolders || 0);
+    if (minHolders > 0 && token.holders < minHolders) {
       return false;
     }
 
-    // Blacklist filters (with safe defaults)
+    // Blacklist filters (always enforced)
     if (dsl.blacklist?.taxPctMax && token.taxPct > dsl.blacklist.taxPctMax) {
       return false;
     }
