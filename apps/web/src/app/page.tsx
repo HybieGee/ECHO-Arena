@@ -86,18 +86,20 @@ export default function Home() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-4 animate-slide-up">
-            <Link
-              href={isConnected ? '/spawn' : '#'}
-              className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan px-10 py-4 text-lg font-orbitron font-bold tracking-wide uppercase text-white transition-all duration-300 hover:shadow-lg hover:shadow-echo-magenta/50"
-              onClick={(e) => {
-                if (!isConnected) {
-                  e.preventDefault();
-                  alert('Please connect your wallet first');
-                }
-              }}
-            >
-              {isConnected ? 'SPAWN BOT' : 'CONNECT TO START'}
-            </Link>
+            <div className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan p-[2px]">
+              <Link
+                href={isConnected ? '/spawn' : '#'}
+                className="block rounded-full bg-arena-surface px-10 py-4 text-lg font-orbitron font-semibold tracking-wide uppercase text-echo-cyan transition-all duration-300 hover:bg-gradient-to-r hover:from-echo-magenta/10 hover:to-echo-cyan/10"
+                onClick={(e) => {
+                  if (!isConnected) {
+                    e.preventDefault();
+                    alert('Please connect your wallet first');
+                  }
+                }}
+              >
+                {isConnected ? 'SPAWN BOT' : 'CONNECT TO START'}
+              </Link>
+            </div>
             <Link
               href="/arena"
               className="inline-block rounded-full border-2 border-gray-500 hover:border-echo-cyan hover:bg-echo-cyan/5 font-orbitron font-semibold tracking-wide uppercase text-echo-text transition-all duration-300 px-10 py-4 text-lg"

@@ -130,7 +130,7 @@ export default function SpawnPage() {
             </div>
             <PillButton
               onClick={handleAuthenticate}
-              variant="filled"
+              variant="primary"
               size="lg"
               disabled={isAuthenticating}
             >
@@ -226,7 +226,7 @@ export default function SpawnPage() {
               </PillButton>
               <PillButton
                 onClick={handleCreate}
-                variant="filled"
+                variant="primary"
                 size="lg"
                 className="flex-1"
                 disabled={!previewDSL || createBotMutation.isPending}
@@ -274,7 +274,7 @@ export default function SpawnPage() {
                   alert(`Error: ${error.message}`);
                 }
               }}
-              variant="filled"
+              variant="primary"
               size="lg"
               className="w-full"
               disabled={verifyBurnMutation.isPending}
@@ -293,12 +293,14 @@ export default function SpawnPage() {
             <p className="text-echo-muted mb-8 max-w-md mx-auto leading-relaxed">
               Your bot has been created and will enter the arena shortly.
             </p>
-            <Link
-              href="/arena"
-              className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan px-8 py-4 text-lg font-orbitron font-bold tracking-wide uppercase text-white transition-all duration-300 hover:shadow-lg hover:shadow-echo-magenta/50"
-            >
-              ⚡ VIEW ARENA
-            </Link>
+            <div className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan p-[2px]">
+              <Link
+                href="/arena"
+                className="block rounded-full bg-arena-surface px-8 py-4 text-lg font-orbitron font-semibold tracking-wide uppercase text-echo-cyan transition-all duration-300 hover:bg-gradient-to-r hover:from-echo-magenta/10 hover:to-echo-cyan/10"
+              >
+                ⚡ VIEW ARENA
+              </Link>
+            </div>
           </div>
         )}
       </div>

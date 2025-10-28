@@ -55,12 +55,14 @@ export default function MyBotsPage() {
           <p className="text-gray-400 mb-6">
             You haven't created any trading bots yet.
           </p>
-          <Link
-            href="/spawn"
-            className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan px-8 py-4 text-lg font-orbitron font-bold tracking-wide uppercase text-white transition-all duration-300 hover:shadow-lg hover:shadow-echo-magenta/50"
-          >
-            SPAWN YOUR FIRST BOT →
-          </Link>
+          <div className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan p-[2px]">
+            <Link
+              href="/spawn"
+              className="block rounded-full bg-arena-surface px-8 py-4 text-lg font-orbitron font-semibold tracking-wide uppercase text-echo-cyan transition-all duration-300 hover:bg-gradient-to-r hover:from-echo-magenta/10 hover:to-echo-cyan/10"
+            >
+              SPAWN YOUR FIRST BOT →
+            </Link>
+          </div>
         </div>
       ) : (
         <>
