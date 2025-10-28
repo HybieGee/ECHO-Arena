@@ -111,9 +111,10 @@ function calculateDynamicAllocation(
   // Higher signal score = more confidence = larger position
   const signal = dsl.entry?.signal || 'momentum'; // Default to momentum
   let confidenceMultiplier = 1.0;
-  const threshold = dsl.entry?.threshold || 30; // Default to 30% for momentum
+  const threshold = dsl.entry?.threshold || 2.0; // Default from schema
   if (signal === 'momentum') {
-    // Momentum: 30% = 1.0x, 50% = 1.2x, 100%+ = 1.5x
+    // Momentum: Above threshold = confident, below = cautious
+    // e.g., threshold 5%, score 10% = 1.5x confidence
     if (signalScore > threshold) {
       confidenceMultiplier = 1.0 + Math.min((signalScore - threshold) / threshold * 0.5, 0.5);
     } else {
@@ -196,11 +197,11 @@ function checkEntries(
   });
 
   // Filter by threshold based on signal type
-  // For momentum: threshold is minimum % price change (e.g., 30 for 30%)
+  // For momentum: threshold is minimum % price change (e.g., 5 for 5%)
   // For volumeSpike: threshold is volume/liquidity ratio
-  // For newLaunch: threshold is selectivity (higher = newer only)
+  // For newLaunch: threshold is selectivity (lower = more aggressive on age)
   // For socialBuzz: threshold is minimum holder count multiplier
-  const thresholdValue = dsl.entry?.threshold || 0;
+  const thresholdValue = dsl.entry?.threshold || 2.0; // Default from schema
 
   let filtered = scored;
 
