@@ -42,35 +42,35 @@ export function evaluateStrategy(
  */
 function filterUniverse(dsl: StrategyDSL, universe: Token[]): Token[] {
   return universe.filter(token => {
-    // Age filter
-    if (token.ageMins > dsl.universe.ageMinutesMax) {
+    // Age filter (with safe defaults)
+    if (dsl.universe?.ageMinutesMax && token.ageMins > dsl.universe.ageMinutesMax) {
       return false;
     }
 
-    // Liquidity filter
-    if (token.liquidityBNB < dsl.universe.minLiquidityBNB) {
+    // Liquidity filter (with safe defaults)
+    if (dsl.universe?.minLiquidityBNB && token.liquidityBNB < dsl.universe.minLiquidityBNB) {
       return false;
     }
 
-    // Holders filter
-    if (token.holders < dsl.universe.minHolders) {
+    // Holders filter (with safe defaults)
+    if (dsl.universe?.minHolders && token.holders < dsl.universe.minHolders) {
       return false;
     }
 
-    // Blacklist filters
-    if (token.taxPct > dsl.blacklist.taxPctMax) {
+    // Blacklist filters (with safe defaults)
+    if (dsl.blacklist?.taxPctMax && token.taxPct > dsl.blacklist.taxPctMax) {
       return false;
     }
 
-    if (dsl.blacklist.honeypot && token.isHoneypot) {
+    if (dsl.blacklist?.honeypot && token.isHoneypot) {
       return false;
     }
 
-    if (dsl.blacklist.ownerRenouncedRequired && !token.ownerRenounced) {
+    if (dsl.blacklist?.ownerRenouncedRequired && !token.ownerRenounced) {
       return false;
     }
 
-    if (dsl.blacklist.lpLockedRequired && !token.lpLocked) {
+    if (dsl.blacklist?.lpLockedRequired && !token.lpLocked) {
       return false;
     }
 
