@@ -16,10 +16,12 @@ interface ParseResult {
  * Parse a user prompt into a strategy DSL
  * 1. Try rule-based parsing first (fast, deterministic)
  * 2. If that fails, fall back to LLM translation (requires API key in env)
+ * @param uniquenessSeed - Seed to ensure strategy uniqueness (e.g., timestamp + owner address)
  */
 export async function parsePromptToDSL(
   prompt: string,
-  llmApiKey?: string
+  llmApiKey?: string,
+  uniquenessSeed?: number
 ): Promise<ParseResult> {
   // Sanitize input
   const sanitized = sanitizePrompt(prompt);
@@ -32,12 +34,21 @@ export async function parsePromptToDSL(
 
   // If LLM API key is available, use Claude first for best results
   if (llmApiKey) {
-    return await llmParse(validatedPrompt, llmApiKey);
+    const result = await llmParse(validatedPrompt, llmApiKey);
+    // Inject uniqueness into the DSL if parsing succeeded
+    if (result.success && result.dsl && uniquenessSeed) {
+      result.dsl = injectUniqueness(result.dsl, uniquenessSeed);
+    }
+    return result;
   }
 
   // Fallback to rule-based parsing if no API key
   const ruleBasedResult = ruleBasedParse(validatedPrompt);
   if (ruleBasedResult.success && ruleBasedResult.dsl) {
+    // Inject uniqueness into the DSL
+    if (uniquenessSeed) {
+      ruleBasedResult.dsl = injectUniqueness(ruleBasedResult.dsl, uniquenessSeed);
+    }
     return ruleBasedResult;
   }
 
@@ -345,6 +356,66 @@ Return ONLY the JSON object, no markdown, no explanation.`,
       usedLLM: true,
     };
   }
+}
+
+/**
+ * Inject subtle variations into DSL to ensure uniqueness
+ * This prevents identical prompts from producing identical strategies
+ */
+function injectUniqueness(dsl: StrategyDSL, seed: number): StrategyDSL {
+  // Create a seeded random number generator (0-1 range)
+  const seededRandom = (offset: number = 0) => {
+    const x = Math.sin(seed + offset) * 10000;
+    return x - Math.floor(x);
+  };
+
+  // Clone the DSL to avoid mutations
+  const uniqueDSL = JSON.parse(JSON.stringify(dsl)) as StrategyDSL;
+
+  // Add ±5-10% variation to key parameters
+  const variation1 = 0.05 + seededRandom(1) * 0.05; // 5-10% variation
+  const variation2 = 0.05 + seededRandom(2) * 0.05;
+  const variation3 = 0.05 + seededRandom(3) * 0.05;
+  const variation4 = 0.05 + seededRandom(4) * 0.05;
+
+  // Randomly choose to increase or decrease
+  const sign1 = seededRandom(5) > 0.5 ? 1 : -1;
+  const sign2 = seededRandom(6) > 0.5 ? 1 : -1;
+  const sign3 = seededRandom(7) > 0.5 ? 1 : -1;
+  const sign4 = seededRandom(8) > 0.5 ? 1 : -1;
+
+  // Apply variations to create uniqueness
+  // Threshold variation (±5-10%)
+  uniqueDSL.entry.threshold = Math.max(
+    0.5,
+    Math.min(10, uniqueDSL.entry.threshold * (1 + sign1 * variation1))
+  );
+
+  // Take profit variation (±5-10%)
+  uniqueDSL.risk.takeProfitPct = Math.max(
+    5,
+    Math.min(500, uniqueDSL.risk.takeProfitPct * (1 + sign2 * variation2))
+  );
+
+  // Stop loss variation (±5-10%)
+  uniqueDSL.risk.stopLossPct = Math.max(
+    5,
+    Math.min(50, uniqueDSL.risk.stopLossPct * (1 + sign3 * variation3))
+  );
+
+  // Allocation variation (±5-10%)
+  uniqueDSL.entry.allocationPerPositionBNB = Math.max(
+    0.1,
+    Math.min(1.0, uniqueDSL.entry.allocationPerPositionBNB * (1 + sign4 * variation4))
+  );
+
+  // Round to reasonable precision
+  uniqueDSL.entry.threshold = Math.round(uniqueDSL.entry.threshold * 100) / 100;
+  uniqueDSL.risk.takeProfitPct = Math.round(uniqueDSL.risk.takeProfitPct);
+  uniqueDSL.risk.stopLossPct = Math.round(uniqueDSL.risk.stopLossPct);
+  uniqueDSL.entry.allocationPerPositionBNB = Math.round(uniqueDSL.entry.allocationPerPositionBNB * 1000) / 1000;
+
+  return uniqueDSL;
 }
 
 /**

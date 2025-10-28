@@ -90,18 +90,22 @@ export default function ArenaPage() {
     queryKey: ['leaderboard'],
     queryFn: api.getLeaderboard,
     refetchInterval: 5000, // Update every 5s for real-time leaderboard
+    staleTime: 4000, // Consider data fresh for 4s to prevent unnecessary refetches
   });
 
-  const { data: botDetail } = useQuery({
+  const { data: botDetail, isLoading: botDetailLoading } = useQuery({
     queryKey: ['bot', selectedBotId],
     queryFn: () => api.getBot(selectedBotId!),
     enabled: !!selectedBotId,
+    staleTime: 10000, // Cache bot details for 10s
+    cacheTime: 300000, // Keep in cache for 5 minutes
   });
 
   const { data: bnbPriceData } = useQuery({
     queryKey: ['bnbPrice'],
     queryFn: api.getBnbPrice,
     refetchInterval: 30000, // Update every 30s
+    staleTime: 25000, // Consider price fresh for 25s
   });
 
   const bnbPrice = bnbPriceData?.price || 600; // Fallback to 600
@@ -302,8 +306,14 @@ export default function ArenaPage() {
       )}
 
       {/* Bot Detail Modal */}
-      {selectedBotId && botDetail && (
+      {selectedBotId && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          {botDetailLoading ? (
+            <div className="bg-arena-surface border border-arena-border rounded-lg p-12 text-center">
+              <div className="text-2xl text-neon-cyan mb-4">Loading bot details...</div>
+              <div className="animate-spin h-12 w-12 border-4 border-neon-cyan border-t-transparent rounded-full mx-auto"></div>
+            </div>
+          ) : botDetail ? (
           <div className="bg-arena-surface border border-arena-border rounded-lg p-6 max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <div className="flex-1">
@@ -544,6 +554,7 @@ export default function ArenaPage() {
               )}
             </div>
           </div>
+          ) : null}
         </div>
       )}
     </div>

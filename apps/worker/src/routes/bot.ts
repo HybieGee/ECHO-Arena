@@ -9,6 +9,19 @@ import { parsePromptToDSL } from '@echo-arena/dsl';
 import { checkFreeEligibility } from '../lib/free-week';
 import { rateLimitMiddleware } from '../lib/rate-limit';
 
+/**
+ * Simple hash function for creating uniqueness seeds
+ */
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+}
+
 export const botRoutes = new Hono<{ Bindings: Env }>();
 
 /**
@@ -24,7 +37,9 @@ botRoutes.post('/preview', async (c) => {
     }
 
     // Parse prompt to DSL (with Claude API fallback)
-    const parseResult = await parsePromptToDSL(prompt, c.env.ANTHROPIC_API_KEY);
+    // Use timestamp as uniqueness seed for preview
+    const uniquenessSeed = Date.now();
+    const parseResult = await parsePromptToDSL(prompt, c.env.ANTHROPIC_API_KEY, uniquenessSeed);
 
     if (!parseResult.success || !parseResult.dsl) {
       return c.json(
@@ -136,7 +151,9 @@ botRoutes.post('/', async (c) => {
     }
 
     // Parse prompt to DSL (with Claude API fallback)
-    const parseResult = await parsePromptToDSL(prompt, c.env.ANTHROPIC_API_KEY);
+    // Use timestamp + address hash for maximum uniqueness
+    const uniquenessSeed = Date.now() + hashCode(address);
+    const parseResult = await parsePromptToDSL(prompt, c.env.ANTHROPIC_API_KEY, uniquenessSeed);
 
     if (!parseResult.success || !parseResult.dsl) {
       return c.json(
