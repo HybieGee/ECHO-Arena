@@ -128,6 +128,25 @@ function applyFilters(
 }
 
 /**
+ * Generate bot-specific position size variation
+ * Adds ±5-15% variation to position sizes to ensure uniqueness
+ */
+function getPositionSizeVariation(tokenAddress: string, rngSeed: number, baseAmount: number): number {
+  // Create seed from token address + rngSeed
+  let seed = rngSeed;
+  for (let i = 0; i < tokenAddress.length; i++) {
+    seed = ((seed << 5) - seed) + tokenAddress.charCodeAt(i);
+    seed = seed & seed;
+  }
+
+  // Generate variation between -15% and +15%
+  const normalized = Math.abs(seed % 1000) / 1000; // 0 to 1
+  const variation = (normalized - 0.5) * 0.3; // -0.15 to +0.15 (±15%)
+
+  return baseAmount * (1 + variation);
+}
+
+/**
  * Calculate dynamic position size based on signal strength and strategy
  * This makes each bot's trading amounts unique based on their strategy
  */
@@ -136,7 +155,9 @@ function calculateDynamicAllocation(
   state: BotState,
   signalScore: number,
   maxAffordable: number,
-  slotsAvailable: number
+  slotsAvailable: number,
+  tokenAddress: string,
+  rngSeed: number
 ): number {
   // Base allocation from DSL (use as reference point)
   const baseAllocation = dsl.entry.allocationPerPositionBNB;
@@ -203,10 +224,13 @@ function calculateDynamicAllocation(
   );
 
   // Ensure we don't exceed what's affordable
-  const finalAllocation = Math.min(dynamicAllocation, maxAffordable);
+  let finalAllocation = Math.min(dynamicAllocation, maxAffordable);
 
-  // Ensure minimum viable trade size
-  return Math.max(finalAllocation, SIM_CONFIG.MIN_TRADE_BNB);
+  // Apply bot-specific position size variation (±15%)
+  finalAllocation = getPositionSizeVariation(tokenAddress, rngSeed, finalAllocation);
+
+  // Ensure minimum viable trade size and don't exceed max affordable
+  return Math.max(Math.min(finalAllocation, maxAffordable), SIM_CONFIG.MIN_TRADE_BNB);
 }
 
 /**
@@ -274,8 +298,18 @@ function checkEntries(
   // Take top candidates that meet threshold
   const topCandidates = filtered.slice(0, slotsAvailable);
 
-  // Generate buy intents
+  // Generate buy intents with timing variation
+  // Not all bots will act on the same scan - simulate execution delays
   for (const { token, score } of topCandidates) {
+    // Simulate entry timing variation: 20% chance to skip this scan cycle
+    // This creates natural diversity in entry prices
+    const timingHash = hashAddressWithSeed(token.address, rngSeed + currentTime);
+    const skipProbability = (timingHash % 100) / 100; // 0 to 1
+    if (skipProbability < 0.2) {
+      // Skip this entry opportunity - bot will try again next scan
+      console.log(`Bot ${rngSeed}: Skipping ${token.symbol} this cycle (timing variation)`);
+      continue;
+    }
     // Check if we already have this position
     if (state.positions.some(p => p.symbol === token.symbol)) {
       continue;
@@ -296,7 +330,9 @@ function checkEntries(
       state,
       score,
       maxAffordable,
-      slotsAvailable
+      slotsAvailable,
+      token.address,
+      rngSeed
     );
 
     intents.push({
@@ -309,6 +345,25 @@ function checkEntries(
   }
 
   return intents;
+}
+
+/**
+ * Generate bot-specific variation multiplier for risk thresholds
+ * Uses position-specific data to ensure consistency per position
+ */
+function getBotRiskVariation(symbol: string, entryTime: number, baseValue: number): number {
+  // Create a deterministic seed from symbol + entryTime
+  let seed = entryTime;
+  for (let i = 0; i < symbol.length; i++) {
+    seed = ((seed << 5) - seed) + symbol.charCodeAt(i);
+    seed = seed & seed;
+  }
+
+  // Generate pseudo-random variation between -10% and +10%
+  const normalized = Math.abs(seed % 1000) / 1000; // 0 to 1
+  const variation = (normalized - 0.5) * 0.2; // -0.1 to +0.1 (±10%)
+
+  return baseValue * (1 + variation);
 }
 
 /**
@@ -344,28 +399,41 @@ function checkExits(
 
     console.log(`Position ${position.symbol}: Entry ${entryPrice.toFixed(8)}, Current ${currentPrice.toFixed(8)}, P&L ${pnlPct.toFixed(2)}%`);
 
-    // Check take profit
-    if (pnlPct >= dsl.risk.takeProfitPct) {
-      console.log(`TAKE PROFIT triggered for ${position.symbol} at ${pnlPct.toFixed(2)}%`);
+    // Apply bot-specific variation to take profit and stop loss thresholds
+    // This ensures each bot exits at slightly different prices even with same DSL
+    const takeProfitThreshold = getBotRiskVariation(
+      position.symbol,
+      position.entryTime,
+      dsl.risk.takeProfitPct
+    );
+    const stopLossThreshold = getBotRiskVariation(
+      position.symbol,
+      position.entryTime,
+      dsl.risk.stopLossPct
+    );
+
+    // Check take profit with variation
+    if (pnlPct >= takeProfitThreshold) {
+      console.log(`TAKE PROFIT triggered for ${position.symbol} at ${pnlPct.toFixed(2)}% (threshold: ${takeProfitThreshold.toFixed(2)}%)`);
       intents.push({
         side: 'sell',
         symbol: position.symbol,
         tokenAddress: position.tokenAddress,
         amountBNB: position.qty * currentPrice,
-        reason: `Take profit (${pnlPct.toFixed(2)}% gain)`,
+        reason: `Take profit (${pnlPct.toFixed(2)}% gain, threshold: ${takeProfitThreshold.toFixed(2)}%)`,
       });
       continue;
     }
 
-    // Check stop loss
-    if (pnlPct <= -dsl.risk.stopLossPct) {
-      console.log(`STOP LOSS triggered for ${position.symbol} at ${pnlPct.toFixed(2)}%`);
+    // Check stop loss with variation
+    if (pnlPct <= -stopLossThreshold) {
+      console.log(`STOP LOSS triggered for ${position.symbol} at ${pnlPct.toFixed(2)}% (threshold: ${stopLossThreshold.toFixed(2)}%)`);
       intents.push({
         side: 'sell',
         symbol: position.symbol,
         tokenAddress: position.tokenAddress,
         amountBNB: position.qty * currentPrice,
-        reason: `Stop loss (${pnlPct.toFixed(2)}% loss)`,
+        reason: `Stop loss (${pnlPct.toFixed(2)}% loss, threshold: ${stopLossThreshold.toFixed(2)}%)`,
       });
       continue;
     }
