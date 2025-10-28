@@ -29,7 +29,8 @@ export function evaluateStrategy(
   intents.push(...exitIntents);
 
   // Check for entry signals if we have room for new positions
-  if (state.positions.length < dsl.entry.maxPositions) {
+  const maxPositions = dsl.entry?.maxPositions || 3; // Default to 3 positions
+  if (state.positions.length < maxPositions) {
     const entryIntents = checkEntries(dsl, state, candidates, currentTime, rngSeed);
     intents.push(...entryIntents);
   }
@@ -130,12 +131,13 @@ function calculateDynamicAllocation(
 
   // Diversification factor - more positions = smaller per position
   // 1 position = 1.2x, 3 positions = 1.0x, 5+ positions = 0.7x
+  const maxPositions = dsl.entry?.maxPositions || 3;
   let diversificationMultiplier = 1.0;
-  if (dsl.entry.maxPositions === 1) {
+  if (maxPositions === 1) {
     diversificationMultiplier = 1.2; // All-in strategy
-  } else if (dsl.entry.maxPositions === 2) {
+  } else if (maxPositions === 2) {
     diversificationMultiplier = 1.1;
-  } else if (dsl.entry.maxPositions >= 5) {
+  } else if (maxPositions >= 5) {
     diversificationMultiplier = 0.7; // Scalper strategy
   }
 
@@ -170,7 +172,8 @@ function checkEntries(
   const intents: TradeIntent[] = [];
 
   // Calculate available slots
-  const slotsAvailable = dsl.entry.maxPositions - state.positions.length;
+  const maxPositions = dsl.entry?.maxPositions || 3;
+  const slotsAvailable = maxPositions - state.positions.length;
   if (slotsAvailable <= 0) {
     return intents;
   }
