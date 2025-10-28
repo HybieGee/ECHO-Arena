@@ -490,7 +490,7 @@ export class GeckoTerminalService {
     };
 
     await this.cache.put(key, JSON.stringify(inFlight), {
-      expirationTtl: 10, // 10 seconds expiration
+      expirationTtl: 60, // 60 seconds minimum required by Cloudflare KV
     });
   }
 
