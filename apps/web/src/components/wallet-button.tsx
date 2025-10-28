@@ -48,7 +48,7 @@ export function WalletButton() {
 
   const modalContent = showModal && mounted ? (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[9999] p-4 animate-slide-up">
-      <div className="bg-arena-surface border-2 border-echo-magenta/50 rounded-2xl p-8 max-w-md w-full shadow-neon-magenta-lg relative overflow-hidden">
+      <div className="bg-arena-surface border-2 border-echo-magenta/30 rounded-2xl p-8 max-w-md w-full shadow-lg relative overflow-hidden">
         {/* Animated background grid */}
         <div className="absolute inset-0 cyber-grid-overlay opacity-10 pointer-events-none" />
 
@@ -105,7 +105,7 @@ export function WalletButton() {
                   className="w-full p-4 bg-gradient-to-br from-arena-surface to-arena-hover border-2 border-echo-magenta/20 hover:border-echo-cyan/50 rounded-xl text-left transition-all duration-300 group hover:shadow-glow-ring-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-echo-magenta to-echo-cyan rounded-lg flex items-center justify-center shadow-neon-magenta group-hover:scale-110 transition-transform p-2">
+                    <div className="w-14 h-14 bg-arena-bg rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform p-2">
                       <Image
                         src={walletIconPath}
                         alt={walletName}
