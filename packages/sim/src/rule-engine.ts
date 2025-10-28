@@ -109,19 +109,20 @@ function calculateDynamicAllocation(
 
   // Calculate confidence multiplier based on signal strength
   // Higher signal score = more confidence = larger position
+  const signal = dsl.entry?.signal || 'momentum'; // Default to momentum
   let confidenceMultiplier = 1.0;
-  if (dsl.entry.signal === 'momentum') {
+  const threshold = dsl.entry?.threshold || 30; // Default to 30% for momentum
+  if (signal === 'momentum') {
     // Momentum: 30% = 1.0x, 50% = 1.2x, 100%+ = 1.5x
-    const threshold = dsl.entry.threshold;
     if (signalScore > threshold) {
       confidenceMultiplier = 1.0 + Math.min((signalScore - threshold) / threshold * 0.5, 0.5);
     } else {
       confidenceMultiplier = 0.7 + (signalScore / threshold) * 0.3; // 0.7-1.0x
     }
-  } else if (dsl.entry.signal === 'volumeSpike') {
+  } else if (signal === 'volumeSpike') {
     // Higher volume ratio = more confidence
     confidenceMultiplier = 0.8 + Math.min(signalScore * 0.2, 0.7); // 0.8-1.5x
-  } else if (dsl.entry.signal === 'newLaunch') {
+  } else if (signal === 'newLaunch') {
     // Newer tokens (higher score) = more aggressive
     confidenceMultiplier = 0.7 + (signalScore / 10) * 0.8; // 0.7-1.5x
   } else {
@@ -179,9 +180,10 @@ function checkEntries(
   }
 
   // Score each candidate based on signal type
+  const signal = dsl.entry?.signal || 'momentum';
   const scored = candidates.map(token => ({
     token,
-    score: calculateSignalScore(dsl.entry.signal, token),
+    score: calculateSignalScore(signal, token),
   }));
 
   // Sort by score (descending) - deterministic
@@ -198,18 +200,18 @@ function checkEntries(
   // For volumeSpike: threshold is volume/liquidity ratio
   // For newLaunch: threshold is selectivity (higher = newer only)
   // For socialBuzz: threshold is minimum holder count multiplier
-  const thresholdValue = dsl.entry.threshold;
+  const thresholdValue = dsl.entry?.threshold || 0;
 
   let filtered = scored;
 
   // Apply signal-specific threshold logic
-  if (dsl.entry.signal === 'momentum') {
+  if (signal === 'momentum') {
     // Threshold as minimum price change percentage
     filtered = scored.filter(s => s.score >= thresholdValue);
-  } else if (dsl.entry.signal === 'volumeSpike') {
+  } else if (signal === 'volumeSpike') {
     // Threshold as volume/liquidity ratio
     filtered = scored.filter(s => s.score >= thresholdValue);
-  } else if (dsl.entry.signal === 'newLaunch') {
+  } else if (signal === 'newLaunch') {
     // Higher threshold = newer tokens only (inverse relationship for age)
     filtered = scored.filter(s => s.score >= (10 - thresholdValue));
   } else {
@@ -250,7 +252,7 @@ function checkEntries(
       symbol: token.symbol,
       tokenAddress: token.address,
       amountBNB: allocationAmount,
-      reason: `${dsl.entry.signal} signal (score: ${score.toFixed(2)}, allocation: ${allocationAmount.toFixed(4)} BNB)`,
+      reason: `${signal} signal (score: ${score.toFixed(2)}, allocation: ${allocationAmount.toFixed(4)} BNB)`,
     });
   }
 
