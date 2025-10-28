@@ -98,7 +98,6 @@ export default function ArenaPage() {
     queryFn: () => api.getBot(selectedBotId!),
     enabled: !!selectedBotId,
     staleTime: 10000, // Cache bot details for 10s
-    cacheTime: 300000, // Keep in cache for 5 minutes
   });
 
   const { data: bnbPriceData } = useQuery({
