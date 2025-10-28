@@ -208,15 +208,6 @@ export class GeckoTerminalService {
     }
 
     const pools: GeckoTerminalPool[] = data.data;
-    const included: GeckoTerminalToken[] = data.included || [];
-
-    // Build token lookup map
-    const tokenMap = new Map<string, GeckoTerminalToken>();
-    for (const token of included) {
-      if (token.type === 'token') {
-        tokenMap.set(token.id, token);
-      }
-    }
 
     console.log(`Received ${pools.length} pools from GeckoTerminal`);
 
@@ -226,16 +217,13 @@ export class GeckoTerminalService {
 
     for (const pool of pools) {
       try {
+        // Extract token address from relationship ID (format: "bsc_0xADDRESS")
         const baseTokenId = pool.relationships.base_token.data.id;
-        const baseToken = tokenMap.get(baseTokenId);
+        const tokenAddress = baseTokenId.replace('bsc_', '');
 
-        if (!baseToken) {
-          console.log(`⚠️ Skipping pool - base token not found: ${baseTokenId}`);
-          continue;
-        }
-
-        const tokenAddress = baseToken.attributes.address;
-        const symbol = baseToken.attributes.symbol;
+        // Extract symbol from pool name (format: "SYMBOL / WBNB")
+        const poolName = pool.attributes.name || '';
+        const symbol = poolName.split('/')[0]?.trim() || 'UNKNOWN';
 
         // Get prices
         const priceUSD = parseFloat(pool.attributes.base_token_price_usd || '0');
