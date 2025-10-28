@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import { useState, useEffect } from 'react';
+import { PillButton } from '@/components/pill-button';
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -87,7 +88,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row justify-center gap-4 animate-slide-up">
             <Link
               href={isConnected ? '/spawn' : '#'}
-              className="btn-primary text-lg px-10 py-4 relative overflow-hidden group"
+              className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan px-10 py-4 text-lg font-orbitron font-bold tracking-wide uppercase text-white transition-all duration-300 hover:shadow-lg hover:shadow-echo-magenta/50"
               onClick={(e) => {
                 if (!isConnected) {
                   e.preventDefault();
@@ -95,12 +96,12 @@ export default function Home() {
                 }
               }}
             >
-              <span className="relative z-10">
-                {isConnected ? 'SPAWN BOT' : 'CONNECT TO START'}
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-echo-cyan to-echo-magenta opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              {isConnected ? 'SPAWN BOT' : 'CONNECT TO START'}
             </Link>
-            <Link href="/arena" className="btn-secondary text-lg px-10 py-4">
+            <Link
+              href="/arena"
+              className="inline-block rounded-full border-2 border-gray-500 hover:border-echo-cyan hover:bg-echo-cyan/5 font-orbitron font-semibold tracking-wide uppercase text-echo-text transition-all duration-300 px-10 py-4 text-lg"
+            >
               VIEW ARENA →
             </Link>
           </div>

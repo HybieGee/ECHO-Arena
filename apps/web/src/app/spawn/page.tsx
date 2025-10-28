@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { dslToChips } from '@echo-arena/dsl';
 import { useAuthContext } from '@/contexts/auth-context';
 import Link from 'next/link';
+import { PillButton } from '@/components/pill-button';
 
 export default function SpawnPage() {
   const { address, isConnected } = useAccount();
@@ -127,13 +128,14 @@ export default function SpawnPage() {
               <div className="text-xs text-echo-muted uppercase mb-1">WALLET ADDRESS</div>
               <div className="text-echo-text">{address}</div>
             </div>
-            <button
+            <PillButton
               onClick={handleAuthenticate}
-              className="btn-primary"
+              variant="filled"
+              size="lg"
               disabled={isAuthenticating}
             >
               {isAuthenticating ? 'SIGNING...' : '⚡ SIGN MESSAGE'}
-            </button>
+            </PillButton>
           </div>
         )}
 
@@ -213,16 +215,20 @@ export default function SpawnPage() {
 
             {/* Actions */}
             <div className="flex gap-4">
-              <button
+              <PillButton
                 onClick={handlePreview}
-                className="btn-secondary flex-1"
+                variant="primary"
+                size="lg"
+                className="flex-1"
                 disabled={prompt.length === 0}
               >
                 PREVIEW STRATEGY
-              </button>
-              <button
+              </PillButton>
+              <PillButton
                 onClick={handleCreate}
-                className="btn-primary flex-1"
+                variant="filled"
+                size="lg"
+                className="flex-1"
                 disabled={!previewDSL || createBotMutation.isPending}
               >
                 {createBotMutation.isPending
@@ -230,7 +236,7 @@ export default function SpawnPage() {
                   : eligibilityCheck?.eligible || burnCheck?.hasVerifiedBurn
                     ? '⚡ SPAWN BOT'
                     : '🔥 BURN & ENTER'}
-              </button>
+              </PillButton>
             </div>
           </div>
         )}
@@ -256,7 +262,7 @@ export default function SpawnPage() {
               className="input-arena w-full mb-4 font-mono"
               id="txHashInput"
             />
-            <button
+            <PillButton
               onClick={async () => {
                 const input = document.getElementById('txHashInput') as HTMLInputElement;
                 const txHash = input.value;
@@ -268,11 +274,13 @@ export default function SpawnPage() {
                   alert(`Error: ${error.message}`);
                 }
               }}
-              className="btn-primary w-full"
+              variant="filled"
+              size="lg"
+              className="w-full"
               disabled={verifyBurnMutation.isPending}
             >
               {verifyBurnMutation.isPending ? 'VERIFYING...' : '✓ VERIFY & CREATE BOT'}
-            </button>
+            </PillButton>
           </div>
         )}
 
@@ -285,7 +293,10 @@ export default function SpawnPage() {
             <p className="text-echo-muted mb-8 max-w-md mx-auto leading-relaxed">
               Your bot has been created and will enter the arena shortly.
             </p>
-            <Link href="/arena" className="btn-primary inline-block">
+            <Link
+              href="/arena"
+              className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan px-8 py-4 text-lg font-orbitron font-bold tracking-wide uppercase text-white transition-all duration-300 hover:shadow-lg hover:shadow-echo-magenta/50"
+            >
               ⚡ VIEW ARENA
             </Link>
           </div>

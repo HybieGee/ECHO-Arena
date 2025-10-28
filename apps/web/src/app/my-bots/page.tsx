@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import Link from 'next/link';
+import { PillButton } from '@/components/pill-button';
 
 export default function MyBotsPage() {
   const { address, isConnected } = useAccount();
@@ -56,7 +57,7 @@ export default function MyBotsPage() {
           </p>
           <Link
             href="/spawn"
-            className="btn-primary inline-block px-8 py-3"
+            className="inline-block rounded-full bg-gradient-to-r from-echo-magenta to-echo-cyan px-8 py-4 text-lg font-orbitron font-bold tracking-wide uppercase text-white transition-all duration-300 hover:shadow-lg hover:shadow-echo-magenta/50"
           >
             SPAWN YOUR FIRST BOT →
           </Link>
@@ -140,7 +141,7 @@ function BotCard({ bot }: { bot: any }) {
       <div className="flex gap-2">
         <Link
           href={`/arena`}
-          className="btn-secondary flex-1 text-center py-2 text-sm"
+          className="flex-1 text-center rounded-full border-2 border-gray-500 hover:border-echo-cyan hover:bg-echo-cyan/5 font-orbitron font-semibold tracking-wide uppercase text-echo-text transition-all duration-300 px-4 py-2 text-sm"
         >
           VIEW ARENA
         </Link>
