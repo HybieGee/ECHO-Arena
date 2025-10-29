@@ -114,8 +114,8 @@ function executeBuy(
   state.orderCount++;
   state.lastOrderTime = executionTime;
 
-  // Add or update position
-  const existingPos = state.positions.find(p => p.symbol === intent.symbol);
+  // Add or update position (match by contract address, not symbol)
+  const existingPos = state.positions.find(p => p.tokenAddress === intent.tokenAddress);
   if (existingPos) {
     // Update average price
     const totalQty = existingPos.qty + qty;
@@ -144,8 +144,8 @@ function executeSell(
   token: Token,
   executionTime: number
 ): TradeResult {
-  // Find position
-  const position = state.positions.find(p => p.symbol === intent.symbol);
+  // Find position (match by contract address, not symbol)
+  const position = state.positions.find(p => p.tokenAddress === intent.tokenAddress);
   if (!position) {
     return {
       success: false,
@@ -218,7 +218,8 @@ export function updateUnrealizedPnL(state: BotState, prices: Map<string, number>
   let totalUnrealized = 0;
 
   for (const pos of state.positions) {
-    const currentPrice = prices.get(pos.symbol);
+    // CRITICAL: Look up price by contract address, not symbol (multiple tokens can share same symbol)
+    const currentPrice = prices.get(pos.tokenAddress);
     if (currentPrice) {
       const marketValue = pos.qty * currentPrice;
       const costBasis = pos.qty * pos.avgPrice;
@@ -237,7 +238,8 @@ export function calculateTotalValue(state: BotState, prices: Map<string, number>
   let positionsValue = 0;
 
   for (const pos of state.positions) {
-    const currentPrice = prices.get(pos.symbol) || pos.avgPrice;
+    // CRITICAL: Look up price by contract address, not symbol (multiple tokens can share same symbol)
+    const currentPrice = prices.get(pos.tokenAddress) || pos.avgPrice;
     positionsValue += pos.qty * currentPrice;
   }
 

@@ -58,10 +58,10 @@ export const api = {
 
   checkEligibility: (address: string) => fetchAPI(`/bot/check-eligibility/${address}`),
 
-  createBot: (prompt: string, address: string) =>
+  createBot: (prompt: string, address: string, botName: string) =>
     fetchAPI('/bot', {
       method: 'POST',
-      body: JSON.stringify({ prompt, address }),
+      body: JSON.stringify({ prompt, address, botName }),
     }),
 
   getBot: (id: string) => fetchAPI(`/bot/${id}`),

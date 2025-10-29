@@ -65,10 +65,32 @@ botRoutes.post('/preview', async (c) => {
  */
 botRoutes.post('/', async (c) => {
   try {
-    const { prompt, address } = await c.req.json();
+    const { prompt, address, botName } = await c.req.json();
 
     if (!prompt || !address) {
       return c.json({ error: 'Missing prompt or address' }, 400);
+    }
+
+    // Validate bot name is provided
+    if (!botName || typeof botName !== 'string' || botName.trim().length === 0) {
+      return c.json({ error: 'Bot name is required' }, 400);
+    }
+
+    // Validate bot name length (3-50 characters)
+    const trimmedBotName = botName.trim();
+    if (trimmedBotName.length < 3 || trimmedBotName.length > 50) {
+      return c.json({ error: 'Bot name must be between 3 and 50 characters' }, 400);
+    }
+
+    // Check for bot name uniqueness across ALL bots
+    const existingBotWithName = await c.env.DB.prepare(
+      'SELECT id FROM bots WHERE LOWER(bot_name) = LOWER(?) LIMIT 1'
+    )
+      .bind(trimmedBotName)
+      .first();
+
+    if (existingBotWithName) {
+      return c.json({ error: 'Bot name already taken. Please choose a unique name.' }, 400);
     }
 
     // Rate limiting
@@ -163,13 +185,12 @@ botRoutes.post('/', async (c) => {
       );
     }
 
-    // Generate bot name and description using Claude
-    let botName = 'Trading Bot';
+    // Generate bot description using prompt or Claude (optional)
     let botDescription = prompt.substring(0, 100);
 
     if (c.env.ANTHROPIC_API_KEY) {
       try {
-        const nameResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        const descResponse = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -178,53 +199,31 @@ botRoutes.post('/', async (c) => {
           },
           body: JSON.stringify({
             model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 200,
+            max_tokens: 100,
             messages: [{
               role: 'user',
-              content: `You are a creative bot naming expert. Create a COOL, MEMORABLE trading bot name for this strategy:
+              content: `Create a short 1-sentence description (max 100 chars) for this trading bot strategy:
 
 "${prompt}"
 
-Requirements:
-- Name must be 2-4 words max
-- Must sound like a professional trading bot (e.g., "Alpha Hunter", "Momentum Rider", "Volume Sniper")
-- NO generic words like "Bot" or "Trader" in the name
-- Make it catchy and memorable
-- Also create a 1-sentence description (max 100 chars)
-
-Respond EXACTLY in this format:
-NAME: [your creative bot name here]
-DESC: [one sentence description]
-
-Example:
-NAME: Lightning Scalper
-DESC: Aggressive high-frequency bot targeting quick momentum plays with tight stops`
+Just respond with the description, nothing else.`
             }]
           }),
         });
 
-        if (nameResponse.ok) {
-          const data = await nameResponse.json() as { content?: Array<{ text?: string }> };
+        if (descResponse.ok) {
+          const data = await descResponse.json() as { content?: Array<{ text?: string }> };
           const text = data.content?.[0]?.text || '';
-          console.log('Claude name generation response:', text);
-
-          const nameMatch = text.match(/NAME:\s*(.+?)(?:\n|$)/);
-          const descMatch = text.match(/DESC:\s*(.+?)(?:\n|$)/);
-
-          if (nameMatch) {
-            botName = nameMatch[1].trim().substring(0, 50);
-            console.log('Generated bot name:', botName);
-          }
-          if (descMatch) {
-            botDescription = descMatch[1].trim().substring(0, 100);
+          if (text.trim()) {
+            botDescription = text.trim().substring(0, 100);
             console.log('Generated bot description:', botDescription);
           }
         } else {
-          console.error('Claude API error:', nameResponse.status, await nameResponse.text());
+          console.error('Claude API error:', descResponse.status, await descResponse.text());
         }
       } catch (error) {
-        console.error('Failed to generate bot name/description:', error);
-        // Use defaults if generation fails
+        console.error('Failed to generate bot description:', error);
+        // Use default if generation fails
       }
     }
 
@@ -237,7 +236,7 @@ DESC: Aggressive high-frequency bot targeting quick momentum plays with tight st
         address.toLowerCase(),
         prompt,
         JSON.stringify(parseResult.dsl),
-        botName,
+        trimmedBotName,
         botDescription,
         Math.floor(Date.now() / 1000)
       )

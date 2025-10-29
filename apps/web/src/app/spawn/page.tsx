@@ -18,6 +18,7 @@ export default function SpawnPage() {
   const { address, isConnected } = useAccount();
   const { isAuthenticated, isAuthenticating, authenticate } = useAuthContext();
   const [prompt, setPrompt] = useState('');
+  const [botName, setBotName] = useState('');
   const [previewDSL, setPreviewDSL] = useState<any>(null);
   const [step, setStep] = useState<'auth' | 'prompt' | 'burn' | 'success'>(
     isAuthenticated ? 'prompt' : 'auth'
@@ -41,7 +42,7 @@ export default function SpawnPage() {
   });
 
   const createBotMutation = useMutation({
-    mutationFn: () => api.createBot(prompt, address!),
+    mutationFn: () => api.createBot(prompt, address!, botName),
   });
 
   const previewMutation = useMutation({
@@ -175,6 +176,27 @@ export default function SpawnPage() {
               )}
             </div>
 
+            {/* Bot Name Input */}
+            <div className="card-arena">
+              <label className="block text-sm font-orbitron font-semibold mb-3 text-echo-cyan tracking-wide uppercase">
+                Bot Name (required, 3-50 characters, must be unique)
+              </label>
+              <input
+                type="text"
+                className="input-arena w-full font-mono"
+                placeholder="Example: Momentum Hunter, Volume Sniper, Alpha Trader"
+                value={botName}
+                onChange={(e) => setBotName(e.target.value.slice(0, 50))}
+                maxLength={50}
+              />
+              <div className="text-sm text-echo-muted mt-2 font-mono">
+                {botName.length} / 50 characters
+                {botName.length > 0 && botName.length < 3 && (
+                  <span className="text-echo-gold ml-2">⚠ Minimum 3 characters</span>
+                )}
+              </div>
+            </div>
+
             {/* Prompt Input */}
             <div className="card-arena">
               <label className="block text-sm font-orbitron font-semibold mb-3 text-echo-cyan tracking-wide uppercase">
@@ -229,7 +251,7 @@ export default function SpawnPage() {
                 variant="primary"
                 size="lg"
                 className="flex-1"
-                disabled={!previewDSL || createBotMutation.isPending}
+                disabled={!previewDSL || createBotMutation.isPending || botName.trim().length < 3}
               >
                 {createBotMutation.isPending
                   ? 'CREATING...'

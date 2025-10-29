@@ -162,9 +162,10 @@ export class MatchCoordinator extends DurableObject {
 
         // Execute each trade intent
         for (const intent of intents) {
-          const token = universe.find(t => t.symbol === intent.symbol);
+          // CRITICAL: Look up by contract address, not symbol (multiple tokens can have same symbol)
+          const token = universe.find(t => t.address === intent.tokenAddress);
           if (!token) {
-            console.error(`Token ${intent.symbol} not found in universe`);
+            console.error(`Token ${intent.symbol} (${intent.tokenAddress}) not found in universe`);
             continue;
           }
 
@@ -578,12 +579,12 @@ export class MatchCoordinator extends DurableObject {
     const universe = await this.fetchUniverse();
     const priceMap = new Map<string, number>();
     for (const token of universe) {
-      priceMap.set(token.symbol, token.priceInBNB);
+      priceMap.set(token.address, token.priceInBNB); // Use contract address, not symbol
     }
 
     // Calculate position details with current prices
     const positions = botState.positions.map(pos => {
-      const currentPrice = priceMap.get(pos.symbol) || pos.avgPrice;
+      const currentPrice = priceMap.get(pos.tokenAddress) || pos.avgPrice; // Look up by contract address
       const marketValue = pos.qty * currentPrice;
       const costBasis = pos.qty * pos.avgPrice;
       const unrealizedPnL = marketValue - costBasis;
@@ -591,6 +592,7 @@ export class MatchCoordinator extends DurableObject {
 
       return {
         symbol: pos.symbol,
+        tokenAddress: pos.tokenAddress, // Include contract address to distinguish tokens with same symbol
         qty: pos.qty,
         avgPrice: pos.avgPrice,
         currentPrice,
