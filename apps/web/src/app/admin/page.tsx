@@ -30,6 +30,10 @@ export default function AdminPage() {
     mutationFn: (matchId: string) => api.admin.settleMatch(matchId),
   });
 
+  const resetMatchMutation = useMutation({
+    mutationFn: (matchId: string) => api.admin.resetMatch(matchId),
+  });
+
   return (
     <div className="container-arena py-12">
       <h1 className="text-4xl font-bold mb-8 neon-text text-center">
@@ -53,7 +57,7 @@ export default function AdminPage() {
       {/* Match Management */}
       <div className="card-arena mb-8">
         <h2 className="text-2xl font-bold mb-4">Match Management</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button
             onClick={() => createMatchMutation.mutate()}
             className="btn-primary"
@@ -70,6 +74,18 @@ export default function AdminPage() {
             disabled={startMatchMutation.isPending || !authToken}
           >
             Start Match
+          </button>
+          <button
+            onClick={() => {
+              const matchId = prompt('Enter Match ID to reset:');
+              if (matchId && confirm(`Are you sure you want to reset match ${matchId}? This will clear all progress and restart the simulation.`)) {
+                resetMatchMutation.mutate(matchId);
+              }
+            }}
+            className="btn-secondary border-echo-gold hover:border-echo-gold hover:bg-echo-gold/5"
+            disabled={resetMatchMutation.isPending || !authToken}
+          >
+            Reset Match
           </button>
           <button
             onClick={() => {

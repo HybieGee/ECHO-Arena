@@ -100,6 +100,11 @@ export const api = {
         method: 'POST',
       }),
 
+    resetMatch: (matchId: string) =>
+      fetchAPI(`/admin/match/${matchId}/reset`, {
+        method: 'POST',
+      }),
+
     markPaid: (winnerId: string, txHash: string) =>
       fetchAPI(`/admin/winner/${winnerId}/mark-paid`, {
         method: 'POST',
