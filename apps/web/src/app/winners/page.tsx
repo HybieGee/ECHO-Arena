@@ -129,9 +129,9 @@ function MatchResultCard({ matchId }: { matchId: number }) {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-echo-muted uppercase mb-1">Total Prize Pool</div>
-            <div className="text-xl font-bold text-echo-gold">
-              {results.match?.prize_bnb?.toFixed(3) || '0.000'} BNB
+            <div className="text-xs text-echo-muted uppercase mb-1">Total Bots</div>
+            <div className="text-2xl font-bold text-echo-cyan">
+              {results.winners.length}
             </div>
           </div>
         </div>
@@ -148,26 +148,33 @@ function MatchResultCard({ matchId }: { matchId: number }) {
             <div className="font-orbitron font-bold text-lg text-echo-gold">
               {firstPlace.bot_name || `Bot #${firstPlace.bot_id}`}
             </div>
+            <div className="text-xs text-echo-muted font-mono mt-1">
+              Owner: {truncateAddress(firstPlace.owner_address)}
+            </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-neon-green">
+            <div className="text-sm text-echo-muted mb-1">Final Balance</div>
+            <div className="text-xl font-bold text-white">
+              {firstPlace.end_balance.toFixed(4)} BNB
+            </div>
+            <div className="text-2xl font-bold text-neon-green mt-1">
               +{(firstPlace.gain_pct * 100).toFixed(2)}%
             </div>
-            <div className="text-echo-gold font-bold">
+            <div className="text-xs text-echo-muted mt-2 mb-1">
+              Prize (1 BNB × gain%)
+            </div>
+            <div className="text-lg font-bold text-echo-gold">
               {firstPlace.prize_bnb.toFixed(4)} BNB
             </div>
           </div>
         </div>
-        <div className="text-xs text-echo-muted font-mono">
-          Owner: {truncateAddress(firstPlace.owner_address)}
-        </div>
       </div>
 
-      {/* Other Top Winners */}
+      {/* Other Top Performers */}
       {topWinners.length > 1 && (
         <div className="space-y-2">
           <div className="text-xs text-echo-muted uppercase tracking-wide mb-2">
-            Top Performers
+            Top 5 Performers
           </div>
           {topWinners.slice(1).map((winner: any, idx: number) => (
             <div
@@ -188,11 +195,12 @@ function MatchResultCard({ matchId }: { matchId: number }) {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-neon-green font-bold">
-                  +{(winner.gain_pct * 100).toFixed(2)}%
+                <div className="text-sm text-echo-muted mb-1">Final Balance</div>
+                <div className="text-lg font-bold text-white">
+                  {winner.end_balance.toFixed(4)} BNB
                 </div>
-                <div className="text-xs text-echo-gold">
-                  {winner.prize_bnb.toFixed(4)} BNB
+                <div className="text-neon-green font-bold mt-1">
+                  +{(winner.gain_pct * 100).toFixed(2)}%
                 </div>
               </div>
             </div>
