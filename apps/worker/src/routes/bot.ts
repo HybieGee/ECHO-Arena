@@ -246,6 +246,38 @@ Just respond with the description, nothing else.`
       return c.json({ error: 'Failed to create bot' }, 500, rateLimit.headers);
     }
 
+    // CRITICAL: Add bot to running match coordinator
+    if (match.status === 'running') {
+      try {
+        const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
+        const stub = c.env.MATCH_COORDINATOR.get(id);
+
+        const botForDO = {
+          id: botResult.id,
+          owner_address: botResult.owner_address,
+          prompt_dsl: JSON.parse(botResult.prompt_dsl),
+        };
+
+        const addBotResponse = await stub.fetch('https://match/addBot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bot: botForDO }),
+        });
+
+        const addBotResult = await addBotResponse.json();
+
+        if (!addBotResponse.ok || (addBotResult as any).error) {
+          console.error('Failed to add bot to match coordinator:', (addBotResult as any).error);
+          // Don't fail the entire request - bot is in DB, just log the error
+        } else {
+          console.log(`Bot ${botResult.id} successfully added to match ${match.id}`);
+        }
+      } catch (error) {
+        console.error('Error adding bot to match coordinator:', error);
+        // Don't fail the entire request - bot is in DB
+      }
+    }
+
     return c.json(
       {
         success: true,

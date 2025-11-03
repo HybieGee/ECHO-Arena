@@ -481,6 +481,36 @@ export class MatchCoordinator extends DurableObject {
   }
 
   /**
+   * Add a bot to the running match
+   */
+  async addBot(bot: Bot) {
+    // Ensure state is loaded
+    if (!this.state) {
+      this.state = await this.ctx.storage.get('matchState');
+    }
+
+    if (!this.state || !this.state.isRunning) {
+      return { error: 'No active match' };
+    }
+
+    // Check if bot already exists
+    if (this.state.botStates.has(bot.id)) {
+      return { error: 'Bot already in match' };
+    }
+
+    // Add bot to state
+    this.state.bots.push(bot);
+    this.state.botStates.set(bot.id, createBotState(bot.id));
+
+    // Persist state
+    await this.ctx.storage.put('matchState', this.state);
+
+    console.log(`Bot ${bot.id} added to match ${this.state.matchId}. Total bots: ${this.state.bots.length}`);
+
+    return { success: true, message: 'Bot added to match' };
+  }
+
+  /**
    * Handle HTTP requests
    */
   async fetch(request: Request) {
@@ -494,6 +524,12 @@ export class MatchCoordinator extends DurableObject {
         body.endTs,
         body.bots
       );
+      return Response.json(result);
+    }
+
+    if (url.pathname === '/addBot' && request.method === 'POST') {
+      const body = await request.json();
+      const result = await this.addBot(body.bot);
       return Response.json(result);
     }
 
