@@ -158,7 +158,7 @@ function MatchResultCard({ matchId }: { matchId: number }) {
               {firstPlace.end_balance.toFixed(4)} BNB
             </div>
             <div className="text-2xl font-bold text-neon-green mt-1">
-              +{(firstPlace.gain_pct * 100).toFixed(2)}%
+              +{firstPlace.gain_pct.toFixed(2)}%
             </div>
             <div className="text-xs text-echo-muted mt-2 mb-1">
               Prize (1 BNB × gain%)
@@ -200,7 +200,7 @@ function MatchResultCard({ matchId }: { matchId: number }) {
                   {winner.end_balance.toFixed(4)} BNB
                 </div>
                 <div className="text-neon-green font-bold mt-1">
-                  +{(winner.gain_pct * 100).toFixed(2)}%
+                  +{winner.gain_pct.toFixed(2)}%
                 </div>
               </div>
             </div>
