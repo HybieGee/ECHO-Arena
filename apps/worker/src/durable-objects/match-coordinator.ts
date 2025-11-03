@@ -83,22 +83,22 @@ export class MatchCoordinator extends DurableObject {
     // Store initial state
     await this.ctx.storage.put('matchState', this.state);
 
-    // Schedule first alarm to start simulation loop (start in 1 minute)
-    await this.ctx.storage.setAlarm(Date.now() + 60000);
+    // Schedule first alarm to start simulation loop (start in 30 seconds)
+    await this.ctx.storage.setAlarm(Date.now() + 30000);
 
     return { success: true, message: 'Match started' };
   }
 
   /**
-   * Alarm handler - runs simulation tick every 1-3 minutes
+   * Alarm handler - runs simulation tick every 30-90 seconds
    */
   async alarm() {
     await this.simulationTick();
 
     // Schedule next alarm if match is still running
     if (this.state && this.state.isRunning) {
-      // Random interval between 1-3 minutes (60000-180000 ms)
-      const randomInterval = 60000 + Math.random() * 120000;
+      // Random interval between 30-90 seconds (30000-90000 ms) for more active trading
+      const randomInterval = 30000 + Math.random() * 60000;
       await this.ctx.storage.setAlarm(Date.now() + randomInterval);
     }
   }
@@ -132,10 +132,10 @@ export class MatchCoordinator extends DurableObject {
       // Fetch universe (live token prices)
       const universe = await this.fetchUniverse();
 
-      // Build price map for PnL updates
+      // Build price map for PnL updates (CRITICAL: Key by contract address, not symbol!)
       const priceMap = new Map<string, number>();
       for (const token of universe) {
-        priceMap.set(token.symbol, token.priceInBNB);
+        priceMap.set(token.address, token.priceInBNB); // Use contract address to handle tokens with duplicate symbols
       }
 
       // Process each bot in deterministic order
