@@ -317,7 +317,15 @@ export default function SpawnPage() {
 
         {step === 'success' && (
           <div className="card-arena text-center border-neon-green/50 shadow-neon-green">
-            <div className="text-6xl mb-6">🎉</div>
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/icons/BotSpawned.png"
+                alt="Bot Spawned"
+                width={150}
+                height={150}
+                className="object-contain"
+              />
+            </div>
             <h2 className="text-3xl font-orbitron font-bold mb-4 text-neon-green uppercase tracking-wider">
               BOT SPAWNED!
             </h2>
