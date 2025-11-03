@@ -63,38 +63,66 @@ matchRoutes.get('/current', async (c) => {
 
 /**
  * GET /api/match/history
- * Get balance history for current match
+ * Get list of all matches (for winners page)
  */
 matchRoutes.get('/history', async (c) => {
   try {
-    // Get current match
-    const match = await c.env.DB.prepare(
+    // Get all matches ordered by most recent first
+    const matchesResult = await c.env.DB.prepare(
+      'SELECT id, start_ts, end_ts, status, result_hash FROM matches ORDER BY start_ts DESC LIMIT 50'
+    )
+      .all();
+
+    // For each settled match, get the total prize pool from winners table
+    const matchesWithPrizes = await Promise.all(
+      (matchesResult.results || []).map(async (match: any) => {
+        if (match.status === 'settled') {
+          const prizeSum = await c.env.DB.prepare(
+            'SELECT SUM(prize_bnb) as total_prize FROM winners WHERE match_id = ?'
+          )
+            .bind(match.id)
+            .first();
+
+          return {
+            ...match,
+            prize_bnb: prizeSum?.total_prize || 0,
+          };
+        }
+        return {
+          ...match,
+          prize_bnb: 0,
+        };
+      })
+    );
+
+    // Also get current match balance history for Arena page
+    const currentMatch = await c.env.DB.prepare(
       'SELECT * FROM matches WHERE status IN (?, ?) ORDER BY start_ts DESC LIMIT 1'
     )
       .bind('running', 'pending')
       .first();
 
-    if (!match) {
-      return c.json({ error: 'No active match' }, 404);
-    }
+    let balanceHistory: any[] = [];
 
-    // Get history from Durable Object
-    try {
-      const id = c.env.MATCH_COORDINATOR.idFromName(`match-${match.id}`);
-      const stub = c.env.MATCH_COORDINATOR.get(id);
-      const response = await stub.fetch('https://match/history');
+    if (currentMatch) {
+      try {
+        const id = c.env.MATCH_COORDINATOR.idFromName(`match-${currentMatch.id}`);
+        const stub = c.env.MATCH_COORDINATOR.get(id);
+        const response = await stub.fetch('https://match/history');
 
-      if (!response.ok) {
-        console.error('DO history response not ok:', response.status);
-        return c.json({ balanceHistory: [] });
+        if (response.ok) {
+          const data = await response.json();
+          balanceHistory = data.balanceHistory || [];
+        }
+      } catch (error) {
+        console.error('Failed to fetch balance history from DO:', error);
       }
-
-      const data = await response.json();
-      return c.json(data);
-    } catch (error) {
-      console.error('Failed to fetch history from DO:', error);
-      return c.json({ balanceHistory: [] });
     }
+
+    return c.json({
+      matches: matchesWithPrizes,
+      balanceHistory, // For Arena page chart
+    });
   } catch (error) {
     console.error('Error fetching match history:', error);
     return c.json({ error: 'Failed to fetch history' }, 500);

@@ -107,6 +107,14 @@ export default function ArenaPage() {
     staleTime: 25000, // Consider price fresh for 25s
   });
 
+  // Fetch history using React Query for better caching
+  const { data: historyData } = useQuery({
+    queryKey: ['matchHistory'],
+    queryFn: api.getMatchHistory,
+    staleTime: 60000, // Cache for 60s - history doesn't change that often
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+  });
+
   const bnbPrice = bnbPriceData?.price || 600; // Fallback to 600
 
   const leaderboard = leaderboardData?.leaderboard || [];
@@ -116,33 +124,24 @@ export default function ArenaPage() {
     .sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0))
     .slice(0, 50);
 
-  // Fetch history from server on mount
+  // Initialize history from server data (only once when data arrives)
   useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const data = await api.getMatchHistory();
-
-        if (data.balanceHistory && data.balanceHistory.length > 0) {
-          // Convert server history to chart format
-          const convertedHistory = data.balanceHistory.map((snapshot: any) => {
-            const time = new Date(snapshot.timestamp).toLocaleTimeString('en-US', {
-              hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-            });
-            const dataPoint: any = { time };
-            snapshot.balances.forEach((bot: any) => {
-              dataPoint[`bot${bot.botId}`] = bot.balance;
-            });
-            return dataPoint;
-          });
-          historyRef.current = convertedHistory;
-          setBalanceHistory(convertedHistory);
-        }
-      } catch (error) {
-        console.error('Failed to fetch history:', error);
-      }
+    if (historyData?.balanceHistory && historyData.balanceHistory.length > 0 && historyRef.current.length === 0) {
+      // Convert server history to chart format
+      const convertedHistory = historyData.balanceHistory.map((snapshot: any) => {
+        const time = new Date(snapshot.timestamp).toLocaleTimeString('en-US', {
+          hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        const dataPoint: any = { time };
+        snapshot.balances.forEach((bot: any) => {
+          dataPoint[`bot${bot.botId}`] = bot.balance;
+        });
+        return dataPoint;
+      });
+      historyRef.current = convertedHistory;
+      setBalanceHistory(convertedHistory);
     }
-    fetchHistory();
-  }, []);
+  }, [historyData]);
 
   useEffect(() => {
     if (!leaderboard || leaderboard.length === 0) return;

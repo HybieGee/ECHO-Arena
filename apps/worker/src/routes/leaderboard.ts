@@ -106,18 +106,38 @@ leaderboardRoutes.get('/:matchId', async (c) => {
       return c.json({ error: 'Match not yet settled' }, 400);
     }
 
-    // Get final results from winners table
-    const winners = await c.env.DB.prepare(
-      'SELECT * FROM winners WHERE match_id = ? ORDER BY end_balance DESC'
+    // Get final results from winners table with bot names
+    const winnersResult = await c.env.DB.prepare(
+      `SELECT
+        w.*,
+        b.bot_name,
+        b.bot_description
+      FROM winners w
+      LEFT JOIN bots b ON w.bot_id = b.id
+      WHERE w.match_id = ?
+      ORDER BY w.end_balance DESC`
     )
       .bind(matchId)
       .all();
 
+    const winners = (winnersResult.results || []).map((w: any) => ({
+      ...w,
+      gain_pct: w.pct_gain, // Map pct_gain to gain_pct for frontend
+    }));
+
+    // Calculate total prize pool
+    const totalPrize = winners.reduce((sum: number, w: any) => sum + (w.prize_bnb || 0), 0);
+
     return c.json({
-      matchId: match.id,
-      status: match.status,
-      resultHash: match.result_hash,
-      winners: winners.results || [],
+      match: {
+        id: match.id,
+        status: match.status,
+        result_hash: match.result_hash,
+        start_ts: match.start_ts,
+        end_ts: match.end_ts,
+        prize_bnb: totalPrize,
+      },
+      winners,
     });
   } catch (error) {
     console.error('Error fetching final results:', error);
