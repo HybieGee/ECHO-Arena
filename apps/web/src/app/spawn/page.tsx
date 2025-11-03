@@ -144,7 +144,7 @@ export default function SpawnPage() {
               size="lg"
               disabled={isAuthenticating}
             >
-              {isAuthenticating ? 'SIGNING...' : '⚡ SIGN MESSAGE'}
+              {isAuthenticating ? 'SIGNING...' : 'SIGN MESSAGE'}
             </PillButton>
           </div>
         )}
@@ -337,7 +337,7 @@ export default function SpawnPage() {
                 href="/arena"
                 className="block rounded-full bg-arena-surface px-8 py-4 text-lg font-orbitron font-semibold tracking-wide uppercase text-echo-cyan transition-all duration-300 hover:bg-gradient-to-r hover:from-echo-magenta/10 hover:to-echo-cyan/10"
               >
-                ⚡ VIEW ARENA
+                VIEW ARENA
               </Link>
             </div>
           </div>
