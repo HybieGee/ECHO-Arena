@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import Image from 'next/image';
 
 export default function WinnersPage() {
   const { data: matchHistory, isLoading } = useQuery({
@@ -40,7 +41,15 @@ export default function WinnersPage() {
 
         <div className="card-arena">
           <div className="text-center text-echo-muted py-12">
-            <div className="text-6xl mb-4">🏆</div>
+            <div className="flex justify-center mb-4">
+              <Image
+                src="/icons/Winners.png"
+                alt="No Winners Yet"
+                width={150}
+                height={150}
+                className="object-contain"
+              />
+            </div>
             <h2 className="text-2xl font-orbitron font-bold mb-2 text-echo-cyan">No Winners Yet</h2>
             <p>
               Historical match results and winner leaderboard will be displayed here.

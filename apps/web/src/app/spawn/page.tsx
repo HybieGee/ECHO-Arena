@@ -13,6 +13,7 @@ import { dslToChips } from '@echo-arena/dsl';
 import { useAuthContext } from '@/contexts/auth-context';
 import Link from 'next/link';
 import { PillButton } from '@/components/pill-button';
+import Image from 'next/image';
 
 export default function SpawnPage() {
   const { address, isConnected } = useAccount();
@@ -118,7 +119,15 @@ export default function SpawnPage() {
         {/* Authentication Step */}
         {step === 'auth' && !isAuthenticated && (
           <div className="card-arena text-center">
-            <div className="text-6xl mb-6">🔐</div>
+            <div className="flex justify-center mb-6">
+              <Image
+                src="/icons/Sign.png"
+                alt="Verify Ownership"
+                width={120}
+                height={120}
+                className="object-contain"
+              />
+            </div>
             <h2 className="text-2xl font-orbitron font-bold mb-4 text-echo-cyan uppercase tracking-wide">
               VERIFY OWNERSHIP
             </h2>

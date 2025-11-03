@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import Link from 'next/link';
 import { PillButton } from '@/components/pill-button';
+import Image from 'next/image';
 
 export default function MyBotsPage() {
   const { address, isConnected } = useAccount();
@@ -28,7 +29,15 @@ export default function MyBotsPage() {
           MY BOTS
         </h1>
         <div className="card-arena text-center py-12">
-          <div className="text-6xl mb-4">🔌</div>
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/icons/WalletNotConnected.png"
+              alt="Wallet Not Connected"
+              width={150}
+              height={150}
+              className="object-contain"
+            />
+          </div>
           <h2 className="text-2xl font-bold mb-2">Wallet Not Connected</h2>
           <p className="text-gray-400 mb-6">
             Please connect your wallet to view your bots.
