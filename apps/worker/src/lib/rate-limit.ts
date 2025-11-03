@@ -62,8 +62,9 @@ export async function checkRateLimit(
   const resetAt = now + ((1 - state.tokens % 1) / config.refillRate) * 1000;
 
   // Store updated state
+  // Ensure TTL is at least 60 seconds (KV minimum requirement)
   await kv.put(key, JSON.stringify(state), {
-    expirationTtl: Math.ceil(config.windowMs / 1000),
+    expirationTtl: Math.max(60, Math.ceil(config.windowMs / 1000)),
   });
 
   return {

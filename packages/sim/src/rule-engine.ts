@@ -90,38 +90,32 @@ function applyFilters(
       return false;
     }
 
-    // Liquidity filter (relaxed in fallback mode)
+    // Liquidity filter (VERY RELAXED - only filter if explicitly > 0)
+    // Default behavior: accept ALL tokens regardless of liquidity
     const minLiq = relaxLiquidity
-      ? (dsl.universe?.minLiquidityBNB || 0) * 0.5 // 50% of required liquidity
+      ? Math.max((dsl.universe?.minLiquidityBNB || 0) * 0.2, 0.5) // Super relaxed: 20% or min 0.5 BNB
       : (dsl.universe?.minLiquidityBNB || 0);
-    if (minLiq > 0 && token.liquidityBNB < minLiq) {
+    // Only enforce if explicitly set AND above threshold
+    if (minLiq > 0.5 && token.liquidityBNB < minLiq) {
       return false;
     }
 
-    // Holders filter (relaxed in fallback mode)
+    // Holders filter (VERY RELAXED - only filter if explicitly > 0)
+    // Default behavior: accept ALL tokens regardless of holder count
     const minHolders = relaxLiquidity
-      ? (dsl.universe?.minHolders || 0) * 0.5 // 50% of required holders
+      ? Math.max((dsl.universe?.minHolders || 0) * 0.2, 5) // Super relaxed: 20% or min 5 holders
       : (dsl.universe?.minHolders || 0);
-    if (minHolders > 0 && token.holders < minHolders) {
+    // Only enforce if explicitly set AND above threshold
+    if (minHolders > 5 && token.holders < minHolders) {
       return false;
     }
 
-    // Blacklist filters (always enforced)
-    if (dsl.blacklist?.taxPctMax && token.taxPct > dsl.blacklist.taxPctMax) {
-      return false;
-    }
-
+    // Blacklist filters - ONLY honeypot check (ignore tax, owner, LP lock for four.meme tokens)
     if (dsl.blacklist?.honeypot && token.isHoneypot) {
       return false;
     }
 
-    if (dsl.blacklist?.ownerRenouncedRequired && !token.ownerRenounced) {
-      return false;
-    }
-
-    if (dsl.blacklist?.lpLockedRequired && !token.lpLocked) {
-      return false;
-    }
+    // Ignore other blacklist filters - let bots trade aggressively on new tokens
 
     return true;
   });
@@ -310,8 +304,8 @@ function checkEntries(
       console.log(`Bot ${rngSeed}: Skipping ${token.symbol} this cycle (timing variation)`);
       continue;
     }
-    // Check if we already have this position
-    if (state.positions.some(p => p.symbol === token.symbol)) {
+    // Check if we already have this position (by contract address, not symbol)
+    if (state.positions.some(p => p.tokenAddress === token.address)) {
       continue;
     }
 
@@ -377,14 +371,14 @@ function checkExits(
 ): TradeIntent[] {
   const intents: TradeIntent[] = [];
 
-  // Build price map for quick lookup
+  // Build price map for quick lookup (by contract address, not symbol)
   const priceMap = new Map<string, Token>();
   for (const token of universe) {
-    priceMap.set(token.symbol, token);
+    priceMap.set(token.address, token);
   }
 
   for (const position of state.positions) {
-    const token = priceMap.get(position.symbol);
+    const token = priceMap.get(position.tokenAddress);
     if (!token) {
       // Token not in current universe - skip for now, don't force sell
       // The universe refreshes every 10s and tokens rotate in/out
@@ -452,6 +446,23 @@ function checkExits(
         });
         continue;
       }
+    }
+
+    // CRITICAL: Auto-sell stale positions after 30 minutes with <5% price action
+    // This prevents bots from getting stuck holding dead/low-volume tokens
+    const timeSinceEntry = (currentTime - position.entryTime) / 1000 / 60; // minutes
+    const absPnlPct = Math.abs(pnlPct);
+
+    if (timeSinceEntry >= 30 && absPnlPct < 5) {
+      console.log(`STALE POSITION auto-sell for ${position.symbol} after ${timeSinceEntry.toFixed(0)} min with only ${pnlPct.toFixed(2)}% movement`);
+      intents.push({
+        side: 'sell',
+        symbol: position.symbol,
+        tokenAddress: position.tokenAddress,
+        amountBNB: position.qty * currentPrice,
+        reason: `Stale position (${timeSinceEntry.toFixed(0)} min, ${pnlPct.toFixed(2)}% movement)`,
+      });
+      continue;
     }
 
     // TODO: Implement trailing stop (requires tracking high water mark)
