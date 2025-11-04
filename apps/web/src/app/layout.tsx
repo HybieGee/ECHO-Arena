@@ -83,6 +83,12 @@ export default function RootLayout({
                           WINNERS
                         </Link>
                         <Link
+                          href="/upgrades"
+                          className="text-echo-muted hover:text-echo-magenta transition-all font-medium tracking-wide"
+                        >
+                          UPGRADES
+                        </Link>
+                        <Link
                           href="/whitepaper"
                           className="text-echo-muted hover:text-neon-green transition-all font-medium tracking-wide"
                         >
