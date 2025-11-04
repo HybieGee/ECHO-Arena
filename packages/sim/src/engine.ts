@@ -256,11 +256,12 @@ export function calculateGainPercent(state: BotState, prices: Map<string, number
 
 /**
  * Calculate prize amount based on gain
+ * Winner always gets minimum 1 BNB, with multiplier for positive gains
  */
 export function calculatePrize(gainPercent: number): number {
-  // No prize for negative gains (losses)
+  // Base prize for winner (even with negative performance)
   if (gainPercent <= 0) {
-    return 0;
+    return SIM_CONFIG.PRIZE_MULTIPLIER; // 1.0 BNB
   }
 
   // Cap gain at 500%

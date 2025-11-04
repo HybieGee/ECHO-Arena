@@ -170,7 +170,7 @@ function MatchResultCard({ matchId }: { matchId: number }) {
               {firstPlace.gain_pct >= 0 ? '+' : ''}{firstPlace.gain_pct.toFixed(2)}%
             </div>
             <div className="text-xs text-echo-muted mt-2 mb-1">
-              Prize (1 BNB × {firstPlace.gain_pct >= 0 ? 'gain%' : '0'})
+              Prize ({firstPlace.gain_pct >= 0 ? '1 BNB × gain%' : '1 BNB base'})
             </div>
             <div className="text-lg font-bold text-echo-gold">
               {firstPlace.prize_bnb.toFixed(4)} BNB
