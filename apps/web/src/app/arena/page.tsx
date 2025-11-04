@@ -119,10 +119,10 @@ export default function ArenaPage() {
 
   const leaderboard = leaderboardData?.leaderboard || [];
 
-  // Only show top 50 bots in chart (by balance)
-  const top50Bots = [...leaderboard]
+  // Only show top 20 bots in chart for better performance
+  const top20Bots = [...leaderboard]
     .sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0))
-    .slice(0, 50);
+    .slice(0, 20);
 
   // Initialize history from server data (only once when data arrives)
   useEffect(() => {
@@ -149,20 +149,21 @@ export default function ArenaPage() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Create data point with top 50 bot balances only
+    // Create data point with top 20 bot balances only for better performance
     const dataPoint: any = { time: timeStr };
     const topBots = [...leaderboard]
       .sort((a: any, b: any) => (b.balance || 0) - (a.balance || 0))
-      .slice(0, 50);
+      .slice(0, 20);
 
     topBots.forEach((bot: any) => {
       const botKey = `bot${bot.botId}`;
       dataPoint[botKey] = parseFloat(bot.balance || 0);
     });
 
-    // Add to history (keep all data points from match start)
-    historyRef.current = [...historyRef.current, dataPoint];
-    setBalanceHistory(historyRef.current);
+    // Add to history (limit to last 200 points for performance)
+    const newHistory = [...historyRef.current, dataPoint].slice(-200);
+    historyRef.current = newHistory;
+    setBalanceHistory(newHistory);
   }, [leaderboard]);
 
   return (
@@ -172,12 +173,12 @@ export default function ArenaPage() {
       </h1>
 
       {/* Live Balance Chart */}
-      {balanceHistory.length > 0 && top50Bots.length > 0 && (
+      {balanceHistory.length > 0 && top20Bots.length > 0 && (
         <div className="card-arena p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-echo-cyan">Live Performance Chart</h2>
             <div className="text-sm text-gray-400">
-              Showing top {Math.min(top50Bots.length, 50)} bots · Updates every 5s
+              Showing top {Math.min(top20Bots.length, 20)} bots · Updates every 5s
             </div>
           </div>
 
@@ -219,7 +220,7 @@ export default function ArenaPage() {
                   }}
                 />
                 <Tooltip content={(props) => <CustomTooltip {...props} leaderboard={leaderboard} />} />
-                {top50Bots.map((bot: any, index: number) => (
+                {top20Bots.map((bot: any, index: number) => (
                   <Line
                     key={`bot${bot.botId}`}
                     type="monotone"
@@ -239,7 +240,7 @@ export default function ArenaPage() {
           <div className="mt-4 border-t border-arena-border pt-4">
             <div className="text-sm text-gray-400 mb-2">Top 10 Bots:</div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 max-h-20 overflow-y-auto custom-scrollbar">
-              {top50Bots.slice(0, 10).map((bot: any, index: number) => (
+              {top20Bots.slice(0, 10).map((bot: any, index: number) => (
                 <div key={bot.botId} className="flex items-center gap-2 text-xs">
                   <div
                     className="w-3 h-3 rounded-sm flex-shrink-0"

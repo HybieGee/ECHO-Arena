@@ -166,11 +166,11 @@ function MatchResultCard({ matchId }: { matchId: number }) {
             <div className="text-xl font-bold text-white">
               {firstPlace.end_balance.toFixed(4)} BNB
             </div>
-            <div className="text-2xl font-bold text-neon-green mt-1">
-              +{firstPlace.gain_pct.toFixed(2)}%
+            <div className={`text-2xl font-bold mt-1 ${firstPlace.gain_pct >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+              {firstPlace.gain_pct >= 0 ? '+' : ''}{firstPlace.gain_pct.toFixed(2)}%
             </div>
             <div className="text-xs text-echo-muted mt-2 mb-1">
-              Prize (1 BNB × gain%)
+              Prize (1 BNB × {firstPlace.gain_pct >= 0 ? 'gain%' : '0'})
             </div>
             <div className="text-lg font-bold text-echo-gold">
               {firstPlace.prize_bnb.toFixed(4)} BNB
@@ -208,8 +208,8 @@ function MatchResultCard({ matchId }: { matchId: number }) {
                 <div className="text-lg font-bold text-white">
                   {winner.end_balance.toFixed(4)} BNB
                 </div>
-                <div className="text-neon-green font-bold mt-1">
-                  +{winner.gain_pct.toFixed(2)}%
+                <div className={`font-bold mt-1 ${winner.gain_pct >= 0 ? 'text-neon-green' : 'text-neon-red'}`}>
+                  {winner.gain_pct >= 0 ? '+' : ''}{winner.gain_pct.toFixed(2)}%
                 </div>
               </div>
             </div>

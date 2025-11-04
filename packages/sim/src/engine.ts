@@ -258,6 +258,11 @@ export function calculateGainPercent(state: BotState, prices: Map<string, number
  * Calculate prize amount based on gain
  */
 export function calculatePrize(gainPercent: number): number {
+  // No prize for negative gains (losses)
+  if (gainPercent <= 0) {
+    return 0;
+  }
+
   // Cap gain at 500%
   const cappedGain = Math.min(gainPercent, SIM_CONFIG.PRIZE_CAP_PCT);
 
