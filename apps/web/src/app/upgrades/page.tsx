@@ -96,7 +96,7 @@ export default function UpgradesPage() {
   return (
     <div className="container-arena py-12 relative">
       {/* Blurred Content */}
-      <div className="blur-sm pointer-events-none select-none">
+      <div className="blur-lg pointer-events-none select-none">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-orbitron font-bold mb-4 text-echo-cyan uppercase tracking-wider">
@@ -336,8 +336,8 @@ export default function UpgradesPage() {
 
       {/* Coming Soon Overlay (centered on top of blur) */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="card-arena p-12 max-w-2xl text-center bg-arena-surface/95 backdrop-blur-sm border-echo-cyan shadow-2xl">
-          <h2 className="text-6xl font-orbitron font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-echo-magenta via-echo-cyan to-neon-green uppercase tracking-wider">
+        <div className="card-arena p-12 max-w-2xl text-center bg-arena-surface/95 backdrop-blur-md border-echo-cyan shadow-2xl">
+          <h2 className="text-6xl font-orbitron font-bold mb-6 text-red-600 uppercase tracking-wider">
             COMING SOON
           </h2>
           <p className="text-xl text-echo-text mb-6 leading-relaxed">
